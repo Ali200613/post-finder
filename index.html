@@ -424,15 +424,13 @@ const role = k => ROLE[k.toLowerCase()] || k;
 const an = r => (/^(ui|ux|uni|use|eu|one)/i.test(r) ? "a " : /^([aeiou]|3d|nft)/i.test(r) ? "an " : "a ") + r;
 const TEMPLATES = {
   x: r => [
-    { label: `looking for ${an(r)}`, q: `"looking for ${an(r)}"` },
-    { label: `hiring ${an(r)}`, q: `"hiring ${an(r)}"` },
-    { label: `need ${an(r)}`, q: `"need ${an(r)}"` },
-    { label: `${r} needed`, q: `"${r} needed"` },
-    { label: `${r} wanted`, q: `"${r} wanted"` },
-    { label: `can recommend ${an(r)}`, q: `"recommend ${an(r)}"` },
-    { label: `want to commission + ${r}`, q: `("looking to commission" OR "want to commission" OR "commissioning") "${r}"` },
-    { label: `${r} + send portfolio`, q: `"${r}" ("send your portfolio" OR "dm your portfolio" OR "drop your portfolio" OR "show me your work")` },
-    { label: `paid ${r} job`, q: `"${r}" (paid OR budget OR "will pay") (job OR gig OR project)` },
+    // Broad on purpose: one exact sentence like "looking for a pixel artist" finds almost nothing on X.
+    { label: `looking for / hiring / need ${an(r)}`, q: `("looking for ${an(r)}" OR "hiring ${an(r)}" OR "need ${an(r)}" OR "${r} needed" OR "${r} wanted")` },
+    { label: `${r} + hiring words`, q: `"${r}" (hiring OR "looking for" OR need OR wanted OR seeking)` },
+    { label: `want to commission + ${r}`, q: `"${r}" (commission OR commissioning) (looking OR want OR need)` },
+    { label: `paid ${r} job`, q: `"${r}" (paid OR budget OR pay OR rate)` },
+    { label: `${r} + portfolio / DM`, q: `"${r}" (portfolio OR "dm me" OR "send your work")` },
+    { label: `can recommend ${an(r)}`, q: `"${r}" (recommend OR recommendations OR "anyone know")` },
     { label: `freelance ${r}`, q: `"freelance ${r}" (need OR looking OR hiring)` },
   ],
   reddit: r => [
