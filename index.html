@@ -128,6 +128,11 @@ form.quick { margin-top: 14px; }
 .ac button:hover, .ac button.best { border-style: solid; background: var(--sun); color: #18171c; }
 .ac button.all { background: var(--blue); color: #fff; border-style: solid; }
 .ac button.on { opacity: .5; cursor: default; }
+.datecheck { flex: 1 1 100%; }
+.dc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-weight: 700; }
+.dc-row #dateLine { background: var(--good-bg); color: var(--good); border: 2px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.dc-detail { margin-top: 10px; background: var(--paper); border: 2px dashed var(--line); border-radius: 12px; padding: 12px 14px; font-size: 14px; display: grid; gap: 6px; }
+.dc-detail code { font: 700 13px var(--mono); background: var(--soft); padding: 2px 6px; border-radius: 6px; }
 .gigtools { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 14px; }
 .btn.small { font-size: 13px; padding: 8px 11px; }
 .btn.ghost[aria-pressed="true"] { background: var(--blue); color: #fff; }
@@ -320,6 +325,11 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
             <button type="button" data-mode="reuse">One tab per site</button>
             <button type="button" data-mode="same">This tab</button>
           </div>
+        </div>
+        <div class="datecheck">
+          <span class="label">Dates being searched</span>
+          <div class="dc-row"><span id="dateLine"></span><button class="btn small" type="button" id="dateBtn" aria-expanded="false" aria-controls="dateDetail">Check dates</button></div>
+          <div class="dc-detail" id="dateDetail" hidden></div>
         </div>
         <label class="switch" for="real">
           <input type="checkbox" id="real">
@@ -540,12 +550,16 @@ const X_BASE = ' -"for hire" -"commissions open" -filter:retweets';
 // Kept short on purpose: long X searches quietly return nothing.
 const X_REAL = ' -"looking for clients" -"looking for commissions" -"looking for work" -"hire me" -"commission me" -"my rates" -unpaid -revshare -exposure -giveaway -crypto -filter:replies';
 function untilNext(d) { const x = new Date(d + "T00:00:00"); x.setDate(x.getDate() + 1); return ymd(x); }
+// X/Bluesky "until:" means "before this day", so including today needs tomorrow's date,
+// which looks wrong. When the end date is today, leave "until:" out: no end means "up to now".
 function dateTerms() {
   let s = "";
-  if ($("from").value) s += " since:" + $("from").value;
-  if ($("to").value) s += " until:" + untilNext($("to").value);
+  const from = $("from").value, to = $("to").value, today = ymd(new Date());
+  if (from) s += " since:" + from;
+  if (to && to < today) s += " until:" + untilNext(to);
   return s;
 }
+const niceDay = d => new Date(d + "T00:00:00").toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
 function redditT() {
   const f = $("from").value;
   if (!f) return "all";
@@ -660,6 +674,26 @@ function platformCard(p, items, opts = {}) {
   return card;
 }
 
+// ---- date check: shows exactly which dates each site gets ----
+function renderDates() {
+  const from = $("from").value, to = $("to").value, today = ymd(new Date());
+  const toTxt = !to || to >= today ? `today (${niceDay(today)})` : niceDay(to);
+  $("dateLine").textContent = from ? `✓ ${niceDay(from)} → ${toTxt}` : "No start date: all time";
+  const rt = redditT(), rtReal = isReal() && ["day", "week"].includes(rt) ? "month" : rt;
+  const rLabel = { day: "past 24 hours", week: "past week", month: "past month", year: "past year", all: "all time" }[rtReal];
+  const terms = dateTerms().trim() || "(no dates)";
+  $("dateDetail").innerHTML =
+    `<div><b>X / Twitter</b> and <b>Bluesky</b> get: <code>${esc(terms)}</code>${to && to < today ? "" : " (no end date, so it runs up to right now)"}</div>` +
+    `<div><b>Reddit</b> gets: <code>${esc(rLabel)}</code>${rtReal !== rt ? " (hiring subreddits post less, so Reddit looks a bit further back; newest still first)" : ""}</div>` +
+    `<div><b>Facebook</b>: links can't carry dates. After it opens, pick <b>Date posted</b> on the left.</div>` +
+    `<div>Want other dates? Set exact dates in <a href="#settings">My gigs &amp; settings</a>.</div>`;
+}
+$("dateBtn").addEventListener("click", () => {
+  const d = $("dateDetail"); d.hidden = !d.hidden;
+  $("dateBtn").setAttribute("aria-expanded", String(!d.hidden));
+  $("dateBtn").textContent = d.hidden ? "Check dates" : "Hide";
+});
+
 // ---- several gigs at once ----
 let multi = store.get("pf.multi", false);
 let selected = store.get("pf.selected", [current]);
@@ -755,6 +789,7 @@ function renderFind() {
   document.querySelectorAll("#range button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.days === days)));
   document.querySelectorAll("#openMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === openMode)));
   $("openBox").hidden = inFrame; // inside claude.ai the page can't take over its own tab
+  renderDates();
   const box = $("platforms"); box.innerHTML = "";
   if (!current) { $("gigName").textContent = "your gig"; box.innerHTML = `<p class="empty">Add a gig in step 1 to get searches.</p>`; return; }
   const roles = [...new Set(selected.map(role))];
