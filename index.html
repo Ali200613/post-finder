@@ -119,7 +119,17 @@ h2.section { font: 800 30px/1.05 var(--display); letter-spacing: -0.03em; margin
 }
 .gig:hover { transform: translate(-1px, -1px) rotate(-1.5deg); box-shadow: var(--shadow-sm); }
 .gig[aria-pressed="true"] { background: var(--pink); color: #fff; box-shadow: var(--shadow-sm); }
-form.add { display: flex; gap: 8px; flex: 1 1 260px; max-width: 360px; }
+form.add { display: flex; gap: 8px; flex: 1 1 260px; max-width: 420px; }
+form.quick { margin-top: 14px; }
+.ac { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.ac:empty { display: none; }
+.ac .aclab { font: 700 12px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-right: 2px; }
+.ac button { font: 700 14px/1 var(--body); color: var(--ink); background: var(--card); border: 2px dashed var(--line); border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.ac button:hover, .ac button.best { border-style: solid; background: var(--sun); color: #18171c; }
+.ac button.all { background: var(--blue); color: #fff; border-style: solid; }
+.ac button.on { opacity: .5; cursor: default; }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--ink); color: var(--paper); font-weight: 700; padding: 12px 18px; border-radius: 14px; border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--pink); z-index: 20; max-width: calc(100% - 32px); }
+.toast[hidden] { display: none; }
 input[type=text], input[type=date] {
   font: 16px var(--body); color: var(--ink); background: var(--paper);
   border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0;
@@ -273,6 +283,11 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
     <div class="panel">
       <h2 class="step-title"><span class="num">1</span>What do you do?</h2>
       <div class="gigs" id="gigs"></div>
+      <form class="add quick" id="quickForm">
+        <input type="text" id="quickAdd" placeholder="Type any gig: pixel, comic, game, website…" autocomplete="off" aria-label="Add a gig" aria-describedby="quickSugg">
+        <button class="btn" type="submit">Add</button>
+      </form>
+      <div class="ac" id="quickSugg" aria-live="polite"></div>
     </div>
 
     <div class="panel">
@@ -356,9 +371,10 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
       <p class="sub">These show up in step 1. Remove any you don't do.</p>
       <div class="mygigs" id="mygigs"></div>
       <form class="add" id="addForm" style="margin-top:14px">
-        <input type="text" id="kwInput" placeholder="Add a gig, e.g. logo designer" autocomplete="off" aria-label="New gig">
+        <input type="text" id="kwInput" placeholder="Type any gig: pixel, comic, game, website…" autocomplete="off" aria-label="New gig" aria-describedby="kwSugg">
         <button class="btn" type="submit">Add</button>
       </form>
+      <div class="ac" id="kwSugg" aria-live="polite"></div>
     </div>
     <div class="panel">
       <h2 class="step-title">More gigs clients ask for</h2>
@@ -388,6 +404,7 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
   </div>
 </footer>
 
+<div class="toast" id="toast" role="status" hidden></div>
 <script id="site-data" type="application/json">{"market":{"updatedAt":"2026-11-21T07:00:00+05:00","period":"November 2026","summary":"Based on Upwork's 2026 in-demand skills report, art and book marketplaces, and job boards for November 2026. Websites, logos and video are where most clients are. VTuber work and book illustration are strong niches. More and more clients ask for \"no AI\". Each keyword opens that site's newest posts.","niches":[{"name":"Websites & landing pages","level":"high","why":"Full-stack, web design and front-end are Upwork's most-hired coding skills in 2026. Job boards this month are full of redesigns, WordPress and online-shop builds.","source":{"title":"Upwork in-demand skills 2026","url":"https://www.upwork.com/resources/in-demand-jobs-and-skills"},"keywords":{"x":["\"need a website\" (business OR shop OR store)","\"looking for a web developer\"","\"shopify developer\" (need OR looking OR hiring)","\"landing page\" (need OR hiring) designer"],"reddit":["title:hiring website","title:hiring shopify","title:hiring wordpress","\"landing page\" hiring"],"facebook":["need a website for my business","looking for web developer","shopify expert needed","wordpress developer needed"],"bluesky":["\"need a website\"","\"looking for a web developer\"","\"web designer\" recommend"]}},{"name":"Logos & graphic design","level":"high","why":"Graphic design is #1 in Upwork's design category, and logo design work grew about 44% in a year. Thumbnails and flyers are steady small jobs.","source":{"title":"Upwork in-demand skills 2026","url":"https://www.upwork.com/resources/in-demand-jobs-and-skills"},"keywords":{"x":["\"need a logo\"","\"looking for a logo designer\"","\"graphic designer\" (hiring OR \"looking for\")","\"thumbnail designer\" (need OR looking)"],"reddit":["title:hiring logo","title:hiring \"graphic designer\"","title:hiring thumbnail"],"facebook":["need a logo for my business","looking for graphic designer","flyer design needed"],"bluesky":["\"need a logo\"","\"looking for a graphic designer\"","\"logo designer\""]}},{"name":"Animation, explainers & motion graphics","level":"rising","why":"Video production jumped from 7th to 4th in Upwork's creative skills. Clients want explainer videos, animated logos and YouTube animation. Some roles combine motion design with web skills.","source":{"title":"Upwork in-demand skills 2026","url":"https://www.upwork.com/resources/in-demand-jobs-and-skills"},"keywords":{"x":["\"looking for an animator\"","\"explainer video\" (need OR looking OR hiring)","\"motion graphics\" (hiring OR \"looking for\")","\"animated logo\" need"],"reddit":["title:hiring animator","title:hiring \"motion graphics\"","title:hiring \"explainer video\"","title:paid animation"],"facebook":["looking for animator for youtube","need explainer video","motion graphics designer needed"],"bluesky":["\"looking for an animator\"","\"motion designer\" hiring","\"explainer video\""]}},{"name":"VTuber models, Live2D rigging & emotes","level":"high","why":"A busy niche. Model art and rigging are often bought separately, so you can sell art without rigging. Emote packs go for about $100–250 and rigged models for $300–1,500 or more.","source":{"title":"artbase: VTuber commissions guide","url":"https://blog.artbase.au/blog/vtuber-art-commissions-guide/"},"keywords":{"x":["\"looking for a live2d rigger\"","\"vtuber model\" (commission OR \"looking for\")","\"need emotes\" OR \"looking for an emote artist\"","\"vtuber artist\" looking"],"reddit":["title:hiring vtuber","title:hiring live2d","title:hiring emotes"],"facebook":["looking for vtuber artist","live2d rigger needed","twitch emotes commission"],"bluesky":["\"looking for a rigger\"","\"vtuber model\" commission","\"need emotes\"","#VTuber looking for artist"]}},{"name":"Book illustration & covers","level":"rising","why":"Self-published authors hire their own illustrators. Reedsy saw almost 4 times more cover requests asking for \"no AI\" in 2026 than in 2025, which works in a human artist's favour.","source":{"title":"Reedsy: 2026 book cover trends","url":"https://reedsy.com/blog/book-cover-trends/"},"keywords":{"x":["\"children's book illustrator\" (looking OR need OR hiring)","\"book cover artist\" (looking OR need)","\"illustrator for my book\""],"reddit":["title:hiring \"book cover\"","title:hiring \"children's book\"","title:hiring illustrator"],"facebook":["looking for children's book illustrator","need book cover designer","illustrator for my book"],"bluesky":["\"illustrator for my book\"","\"book cover artist\"","#booksky illustrator"]}},{"name":"Indie game art (pixel art, sprites, 2D)","level":"steady","why":"Indie studios regularly look for pixel artists, 2D animators and background artists. Many offers are small or revenue-share only, so check the pay first.","source":{"title":"Freelancer: pixel art","url":"https://www.freelancer.com/hire/pixel-art"},"keywords":{"x":["\"looking for a pixel artist\"","#gamedev \"looking for an artist\" paid","\"2d artist\" (hiring OR \"looking for\") game"],"reddit":["title:paid pixel","title:paid \"2d artist\"","title:hiring sprite"],"facebook":["looking for pixel artist for game","2d game artist needed"],"bluesky":["\"looking for a pixel artist\"","#gamedev artist wanted","#indiedev hiring artist"]}},{"name":"Character design & custom art","level":"steady","why":"Character sheets, OCs and D&D characters are the classic commission. Buyers pay more for clearly human-made art than for AI images.","source":{"title":"Art market trends 2026","url":"https://impressivemagazine.com/art-market-trends-2026/"},"keywords":{"x":["\"character design\" (commission OR \"looking for\")","\"reference sheet\" commission looking","\"dnd character\" commission"],"reddit":["title:hiring \"character design\"","title:hiring \"reference sheet\"","title:hiring dnd"],"facebook":["looking for character designer","commission dnd character art"],"bluesky":["\"character design\" commission","\"looking for an artist\" oc","\"dnd character\" commission"]}}],"tips":["Write \"100% hand-drawn, no AI\" in your profile and replies. More clients are asking for it.","Websites + animation together is a strong combo: some clients want motion design and front-end in one person.","Adobe stopped selling Animate on March 1, 2026. Learning another tool, like Toon Boom, Spine, Rive or After Effects, matches what clients will ask for.","Watch out for very low budgets ($10 jobs exist) and 'revenue share only' game offers.","Jobs fixing or editing AI images and video grew fast on Upwork (+95% and +329%). That's extra work if you're open to it.","This report covers the month. For what clients posted today and this week, look at 'Trending now' below, which updates every morning."]},"trending":{"updatedAt":"2026-11-21T06:15:00+05:00","roles":[{"name":"2d animator","note":"kids' YouTube videos, short animation series"},{"name":"animator illustrator","note":"brand videos and social content"},{"name":"3d animator","note":"kids' videos, game contracts"},{"name":"illustrator","note":"steady freelance listings"},{"name":"web developer","note":"small presentation pages"}],"phrases":[{"text":"[hiring] web developer"},{"text":"hand-crafted animation no AI"},{"text":"animator for kids youtube channel"},{"text":"looking for an illustrator"}],"posts":[{"date":"2026-11-18","platform":"web","title":"AWN Jobs Roundup, Nov 18: 70 animation and VFX openings worldwide","url":"https://www.awn.com/news/awn-jobs-roundup-november-18-70-animation-and-vfx-openings-worldwide"},{"platform":"web","title":"Freelancer.com: 2D animation jobs (e.g. 10 short hand-made animations; kids' YouTube videos)","url":"https://www.freelancer.com/jobs/2d-animation/"},{"platform":"web","title":"Freelancer.com: illustration jobs","url":"https://www.freelancer.com/jobs/illustration"}]}}</script>
 <script>
 // ================== data ==================
@@ -412,7 +429,68 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const role = k => ROLE[k.toLowerCase()] || k;
+// ---- every gig name we know, so a short word like "pixel" becomes "pixel artist" ----
+const GIGS = [
+  // art & illustration
+  "artist", "illustrator", "character designer", "concept artist", "comic artist", "manga artist", "webtoon artist", "comic colorist",
+  "children's book illustrator", "book cover artist", "book illustrator", "album cover artist", "fantasy map artist", "portrait artist",
+  "pet portrait artist", "fan artist", "anime artist", "chibi artist", "furry artist", "pin-up artist", "tattoo designer", "sticker designer",
+  "emote artist", "Twitch emote artist", "sub badge artist", "VTuber artist", "VTuber model artist", "Live2D rigger", "Live2D artist",
+  "pixel artist", "pixel art animator", "sprite artist", "game artist", "2D game artist", "3D artist", "3D modeler", "3D character artist",
+  "environment artist", "prop artist", "texture artist", "background artist", "storyboard artist", "matte painter", "digital painter",
+  "watercolor artist", "mural artist", "caricature artist", "cartoonist", "NFT artist",
+  // animation & video
+  "animator", "2D animator", "3D animator", "character animator", "frame by frame animator", "motion graphics designer",
+  "explainer video animator", "Live2D animator", "Spine animator", "rigger", "anime animator", "lyric video animator", "logo animator",
+  "video editor", "VFX artist", "YouTube video editor",
+  // design
+  "graphic designer", "logo designer", "brand designer", "UI/UX designer", "UI designer", "UX designer", "web designer", "website designer",
+  "landing page designer", "app designer", "thumbnail designer", "YouTube thumbnail designer", "packaging designer", "merch designer",
+  "t-shirt designer", "poster designer", "flyer designer", "banner designer", "icon designer", "font designer", "presentation designer",
+  // development
+  "web developer", "website developer", "frontend developer", "backend developer", "full stack developer", "WordPress developer",
+  "Shopify developer", "Webflow developer", "Wix developer", "React developer", "Next.js developer", "app developer", "mobile app developer",
+  "iOS developer", "Android developer", "Flutter developer", "game developer", "indie game developer", "Unity developer", "Unreal developer",
+  "Godot developer", "Roblox developer", "Roblox scripter", "Minecraft plugin developer", "Discord bot developer", "Python developer",
+  "JavaScript developer", "Chrome extension developer", "game designer", "level designer",
+];
+// Words people type that aren't in the names themselves.
+const ALIAS = {
+  draw: "artist illustrator", drawing: "artist illustrator", drawer: "artist illustrator", art: "artist",
+  anime: "anime artist anime animator", code: "developer", coder: "developer", coding: "developer", programmer: "developer", dev: "developer",
+  site: "website", page: "landing page", shop: "Shopify", store: "Shopify", ecommerce: "Shopify", vtube: "VTuber", model: "VTuber model 3D modeler",
+  rig: "rigger", map: "fantasy map", cover: "book cover album cover", kids: "children's book", children: "children's book",
+  edit: "video editor", editing: "video editor", youtube: "YouTube thumbnail YouTube video", thumbnail: "thumbnail", motion: "motion graphics",
+  mobile: "mobile app", ios: "iOS", android: "Android", bot: "Discord bot", sprite: "sprite pixel", "3d": "3D", "2d": "2D",
+};
+const words = s => s.toLowerCase().replace(/[^a-z0-9./+'-]+/g, " ").trim().split(" ").filter(Boolean);
+function suggestGigs(text, max = 10) {
+  const typed = words(text);
+  if (!typed.length) return [];
+  const want = typed.map(w => ALIAS[w] ? words(ALIAS[w]) : [w]);
+  const scored = [];
+  GIGS.forEach(g => {
+    const gw = words(g);
+    let score = 0, ok = true;
+    want.forEach((alts, i) => {
+      const hit = alts.some(a => gw.some(x => x.startsWith(a) || (a.length > 3 && x.startsWith(a.slice(0, -1)))));
+      const raw = gw.some(x => x.startsWith(typed[i]));
+      if (!hit && !raw) ok = false; else score += raw ? 3 : 2;
+    });
+    if (!ok) return;
+    if (g.toLowerCase() === text.trim().toLowerCase()) score += 100;
+    score -= gw.length * 0.3;                         // shorter names first
+    if (gw[0].startsWith(typed[0])) score += 1;       // starts with what was typed
+    scored.push([score, g]);
+  });
+  return scored.sort((a, b) => b[0] - a[0]).slice(0, max).map(s => s[1]);
+}
+// A saved short word ("pixel") is searched as its best full name ("pixel artist").
+const role = k => {
+  if (ROLE[k.toLowerCase()]) return ROLE[k.toLowerCase()];
+  if (GIGS.some(g => g.toLowerCase() === k.toLowerCase())) return k;
+  return suggestGigs(k, 1)[0] || k;
+};
 const an = r => (/^(ui|ux|uni|use|eu|one)/i.test(r) ? "a " : /^([aeiou]|3d|nft)/i.test(r) ? "an " : "a ") + r;
 const pad = n => String(n).padStart(2, "0");
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -584,10 +662,6 @@ function renderFind() {
     b.onclick = () => { current = k; renderFind(); };
     gigs.appendChild(b);
   });
-  const f = document.createElement("form"); f.className = "add";
-  f.innerHTML = `<input type="text" id="quickAdd" placeholder="+ add a gig" autocomplete="off" aria-label="Add a gig"><button class="btn" type="submit">Add</button>`;
-  f.onsubmit = e => { e.preventDefault(); addGig($("quickAdd").value, true); };
-  gigs.appendChild(f);
 
   document.querySelectorAll("#range button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.days === days)));
   document.querySelectorAll("#openMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === openMode)));
@@ -739,7 +813,60 @@ $("real").addEventListener("change", () => { save(); renderAll(); });
 document.querySelectorAll("#openMode button").forEach(b => b.addEventListener("click", () => { openMode = b.dataset.mode; store.set("pf.open", openMode); renderAll(); }));
 $("from").addEventListener("change", () => { days = 0; renderAll(); });
 $("to").addEventListener("change", () => { days = 0; renderAll(); });
-$("addForm").addEventListener("submit", e => { e.preventDefault(); addGig($("kwInput").value, false); $("kwInput").value = ""; });
+// ---- "type any gig" boxes: short words become full gig names ----
+let toastTimer = null;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+function wireAutocomplete(formId, inputId, boxId, select) {
+  const input = $(inputId), box = $(boxId);
+  function draw() {
+    const v = input.value.trim();
+    box.innerHTML = "";
+    if (!v) return;
+    const list = suggestGigs(v, 10);
+    const have = new Set(keywords.map(k => k.toLowerCase()));
+    const lab = document.createElement("span"); lab.className = "aclab";
+    lab.textContent = list.length ? "Pick one or more:" : "Not in the list. Add will save it as you typed it.";
+    box.appendChild(lab);
+    list.forEach((g, i) => {
+      const b = document.createElement("button"); b.type = "button";
+      const on = have.has(g.toLowerCase());
+      b.textContent = (on ? "✓ " : "+ ") + g;
+      if (on) b.classList.add("on");
+      else {
+        if (i === 0) b.classList.add("best");
+        b.onclick = () => { addGig(g, select); toast(`Added “${g}”`); draw(); input.focus(); };
+      }
+      box.appendChild(b);
+    });
+    const fresh = list.filter(g => !have.has(g.toLowerCase()));
+    if (fresh.length > 1) {
+      const all = document.createElement("button"); all.type = "button"; all.className = "all";
+      all.textContent = `Add all ${fresh.length}`;
+      all.onclick = () => {
+        fresh.forEach(g => keywords.push(g));
+        if (select) current = fresh[0];
+        save(); renderAll(); toast(`Added ${fresh.length} gigs`); input.value = ""; draw();
+      };
+      box.appendChild(all);
+    }
+  }
+  input.addEventListener("input", draw);
+  $(formId).addEventListener("submit", e => {
+    e.preventDefault();
+    const v = input.value.trim();
+    if (!v) return;
+    const exact = GIGS.find(g => g.toLowerCase() === v.toLowerCase());
+    const pick = exact || suggestGigs(v, 1)[0] || v;
+    addGig(pick, select);
+    toast(pick.toLowerCase() !== v.toLowerCase() ? `Added “${pick}” for “${v}”` : `Added “${pick}”`);
+    input.value = ""; draw();
+  });
+}
+wireAutocomplete("quickForm", "quickAdd", "quickSugg", true);
+wireAutocomplete("addForm", "kwInput", "kwSugg", false);
 $("reset").addEventListener("click", () => {
   keywords = DEFAULTS.slice(); current = keywords[0]; $("real").checked = true; setDays(7); save(); renderAll(); show("find");
 });
