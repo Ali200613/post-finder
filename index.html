@@ -267,11 +267,14 @@ const X_BASE = ' -"for hire" -"commissions open" -filter:retweets';
 // Kept short on purpose: long X searches quietly return nothing.
 // Hides sellers posting "looking for clients/work", unpaid offers and spam. No required words, so real posts are not lost.
 const X_REAL = ' -"looking for clients" -"looking for commissions" -"looking for work" -"hire me" -"commission me" -"my rates" -unpaid -revshare -exposure -giveaway -crypto -filter:replies';
-const REDDIT_REAL = ' NOT "for hire" NOT unpaid NOT revshare NOT exposure NOT "looking for clients" NOT "looking for work" NOT "hire me" NOT "my rates" nsfw:no';
+// Reddit search breaks with many operators, and hiring posts rarely use exact phrases.
+// So in "real jobs" mode: plain words, only inside hiring subreddits, newest first.
+const redditPlain = q => q.replace(/\b(title|flair|self|nsfw):/gi, "").replace(/["()]/g, " ")
+  .replace(/\b(OR|AND|NOT)\b/g, " ").replace(/\s+/g, " ").trim();
 const isReal = () => $("real").checked;
 const xTail = () => X_BASE + (isReal() ? X_REAL : "") + dateTerms();
 const redditSearch = q => isReal()
-  ? `https://www.reddit.com/r/${HIRE_SUBS}/search/?q=${enc(q + REDDIT_REAL)}&restrict_sr=1&sort=new&t=${redditT()}`
+  ? `https://www.reddit.com/r/${HIRE_SUBS}/search/?q=${enc(/\bhiring\b/i.test(redditPlain(q)) ? redditPlain(q) : "hiring " + redditPlain(q))}&restrict_sr=1&sort=new&t=${["day", "week"].includes(redditT()) ? "month" : redditT()}`
   : `https://www.reddit.com/search/?q=${enc(q)}&sort=new&t=${redditT()}`;
 const fbTail = () => isReal() ? " paid" : "";
 const pad = n => String(n).padStart(2, "0");
@@ -433,13 +436,13 @@ const TEMPLATES = {
     { label: `freelance ${r}`, q: `"freelance ${r}" (need OR looking OR hiring)` },
   ],
   reddit: r => [
-    { label: `[Hiring] in title + ${r}`, q: `title:hiring ${r}` },
-    { label: `Hiring tag + ${r}`, q: `flair:hiring ${r}` },
-    { label: `looking for ${an(r)}`, q: `"looking for ${an(r)}"` },
-    { label: `need ${an(r)}`, q: `"need ${an(r)}"` },
+    { label: `hiring + ${r}`, q: `hiring ${r}` },
+    { label: `paid + ${r}`, q: `paid ${r}` },
+    { label: `looking for ${an(r)}`, q: `looking for ${r}` },
+    { label: `need ${an(r)}`, q: `need ${r}` },
+    { label: `${r} only`, q: `${r}` },
     { label: `${r} needed`, q: `"${r} needed"` },
-    { label: `paying for ${an(r)}`, q: `"${r}" (paying OR budget OR paid)` },
-    { label: `want to commission + ${r}`, q: `commission "${r}" (looking OR want)` },
+    { label: `commission + ${r}`, q: `commission ${r}` },
   ],
   fb: r => [
     { label: `looking for ${an(r)}`, q: `looking for ${an(r)}` },
