@@ -287,6 +287,13 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
             <button type="button" data-days="30">30 days</button>
           </div>
         </div>
+        <div id="openBox">
+          <span class="label">Open searches in</span>
+          <div class="seg" id="openMode" role="group" aria-label="Where searches open">
+            <button type="button" data-mode="reuse">One tab per site</button>
+            <button type="button" data-mode="same">This tab</button>
+          </div>
+        </div>
         <label class="switch" for="real">
           <input type="checkbox" id="real">
           <span>Real paid jobs only<small>Hides ads, “looking for clients”, unpaid, rev-share, spam and rage-bait</small></span>
@@ -410,9 +417,19 @@ const an = r => (/^(ui|ux|uni|use|eu|one)/i.test(r) ? "a " : /^([aeiou]|3d|nft)/
 const pad = n => String(n).padStart(2, "0");
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const safeUrl = u => { try { const p = new URL(u); return p.protocol === "https:" ? p.href : null; } catch { return null; } };
+// One tab per site: links name their tab ("pf-x", "pf-reddit"...), so the next click reuses it.
+// No rel="noopener" here on purpose: it would make the browser open a fresh tab every time.
+// X and Facebook block tab reuse on their side, so the browser may still open a new tab for them.
+const inFrame = (() => { try { return window.top !== window; } catch { return true; } })();
+let openMode = store.get("pf.open", "reuse");
+if (inFrame) openMode = "reuse";
+function targetFor(plat) {
+  if (openMode === "same") return "_self";
+  return "pf-" + (PLAT[plat] ? plat : "web");
+}
 function link(cls, plat, href, html) {
   const a = document.createElement("a");
-  a.className = cls; a.href = href; a.target = "_blank"; a.rel = "noopener";
+  a.className = cls; a.href = href; a.target = targetFor(plat);
   a.style.setProperty("--c", `var(--${PLAT[plat] ? PLAT[plat].c : plat})`);
   a.innerHTML = html;
   return a;
@@ -561,6 +578,8 @@ function renderFind() {
   gigs.appendChild(f);
 
   document.querySelectorAll("#range button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.days === days)));
+  document.querySelectorAll("#openMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === openMode)));
+  $("openBox").hidden = inFrame; // inside claude.ai the page can't take over its own tab
   const r = role(current || "artist");
   $("gigName").textContent = current ? r : "your gig";
   const box = $("platforms"); box.innerHTML = "";
@@ -647,7 +666,7 @@ function renderTrending() {
     const plat = String(p.platform || "web").toLowerCase();
     const li = document.createElement("li");
     li.innerHTML = `<span class="badge" style="--c:var(--${PC[plat] || "muted"})">${esc(plat)}</span>`;
-    const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = p.title;
+    const a = document.createElement("a"); a.href = url; a.target = targetFor(PC[plat] || "web"); a.textContent = p.title;
     li.appendChild(a);
     if (typeof p.date === "string") { const s = document.createElement("span"); s.className = "date"; s.textContent = p.date; li.appendChild(s); }
     posts.appendChild(li);
@@ -705,6 +724,7 @@ function renderAll() { renderFind(); renderSettings(); renderTrending(); renderM
 
 document.querySelectorAll("#range button").forEach(b => b.addEventListener("click", () => { setDays(+b.dataset.days); save(); renderAll(); }));
 $("real").addEventListener("change", () => { save(); renderAll(); });
+document.querySelectorAll("#openMode button").forEach(b => b.addEventListener("click", () => { openMode = b.dataset.mode; store.set("pf.open", openMode); renderAll(); }));
 $("from").addEventListener("change", () => { days = 0; renderAll(); });
 $("to").addEventListener("change", () => { days = 0; renderAll(); });
 $("addForm").addEventListener("submit", e => { e.preventDefault(); addGig($("kwInput").value, false); $("kwInput").value = ""; });
