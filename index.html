@@ -314,9 +314,6 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
           <span class="label">Posts from the last</span>
           <div class="seg" id="range" role="group" aria-label="Time range">
             <button type="button" data-days="1">24 hours</button>
-            <button type="button" data-days="3">3 days</button>
-            <button type="button" data-days="7">7 days</button>
-            <button type="button" data-days="30">30 days</button>
           </div>
         </div>
         <div id="openBox">
@@ -534,8 +531,8 @@ function link(cls, plat, href, html) {
 // ================== state ==================
 let keywords = store.get("pf.keywords.v2", DEFAULTS.slice());
 let current = store.get("pf.current", keywords[0] || "");
-let days = store.get("pf.days", 7);
-if (![1, 3, 7, 30].includes(days)) days = 7;
+// Only the last 24 hours: the freshest posts, where a reply still has a chance.
+let days = 1;
 $("real").checked = store.get("pf.real", true);
 function setDays(n) {
   days = n;
@@ -571,7 +568,12 @@ const R_NOT = ' NOT title:"for hire" NOT flair:"for hire" NOT title:"commissions
 function untilNext(d) { const x = new Date(d + "T00:00:00"); x.setDate(x.getDate() + 1); return ymd(x); }
 // X/Bluesky "until:" means "before this day", so including today needs tomorrow's date,
 // which looks wrong. When the end date is today, leave "until:" out: no end means "up to now".
-function dateTerms() {
+// "Last 24 hours": X reads since:<date> in UTC, so after midnight a local date can be in X's future
+// and show nothing. X gets the exact moment 24 hours ago (since_time = seconds since 1970) instead.
+// Bluesky gets the UTC day of 24 hours ago (it only takes dates).
+const ago24 = () => new Date(Date.now() - 864e5);
+function dateTerms(plat = "x") {
+  if (days === 1) return plat === "x" ? " since_time:" + Math.floor(ago24() / 1000) : " since:" + ago24().toISOString().slice(0, 10);
   let s = "";
   const from = $("from").value, to = $("to").value, today = ymd(new Date());
   if (from) s += " since:" + from;
@@ -596,11 +598,11 @@ const URL_FOR = {
   reddit: (q, raw) => {
     if (!isReal()) return `https://www.reddit.com/search/?q=${enc(q + R_NOT)}&sort=new&t=${redditT()}`;
     const p = raw ? q : redditPlain(q), qq = (/\bhiring\b|\bflair:/i.test(p) ? p : "hiring " + p) + R_NOT;
-    const t = ["day", "week"].includes(redditT()) ? "month" : redditT();
+    const t = redditT();
     return `https://www.reddit.com/r/${HIRE_SUBS.join("+")}/search/?q=${enc(qq)}&restrict_sr=1&sort=new&t=${t}`;
   },
   fb: q => `https://www.facebook.com/search/posts/?q=${enc(q + (isReal() ? " paid" : ""))}`,
-  bsky: q => `https://bsky.app/search?q=${enc(q + dateTerms())}`,
+  bsky: q => `https://bsky.app/search?q=${enc(q + dateTerms("bsky"))}`,
 };
 const TEMPLATES = {
   x: r => [
@@ -697,12 +699,15 @@ function platformCard(p, items, opts = {}) {
 function renderDates() {
   const from = $("from").value, to = $("to").value, today = ymd(new Date());
   const toTxt = !to || to >= today ? `today (${niceDay(today)})` : niceDay(to);
-  $("dateLine").textContent = from ? `✓ ${niceDay(from)} → ${toTxt}` : "No start date: all time";
-  const rt = redditT(), rtReal = isReal() && ["day", "week"].includes(rt) ? "month" : rt;
+  const t24 = d => d.toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+  $("dateLine").textContent = days === 1 ? `✓ Last 24 hours: ${t24(ago24())} → now` : from ? `✓ ${niceDay(from)} → ${toTxt}` : "No start date: all time";
+  const rt = redditT(), rtReal = rt;
   const rLabel = { day: "past 24 hours", week: "past week", month: "past month", year: "past year", all: "all time" }[rtReal];
   const terms = dateTerms().trim() || "(no dates)";
-  $("dateDetail").innerHTML =
-    `<div><b>X / Twitter</b> and <b>Bluesky</b> get: <code>${esc(terms)}</code>${to && to < today ? "" : " (no end date, so it runs up to right now)"}</div>` +
+  $("dateDetail").innerHTML = (days === 1
+    ? `<div><b>X / Twitter</b> gets: <code>${esc(terms)}</code> = exactly ${esc(t24(ago24()))}, up to right now</div>` +
+      `<div><b>Bluesky</b> gets: <code>${esc(dateTerms("bsky").trim())}</code> (Bluesky only takes dates, so it can show up to a day more)</div>`
+    : `<div><b>X / Twitter</b> and <b>Bluesky</b> get: <code>${esc(terms)}</code>${to && to < today ? "" : " (no end date, so it runs up to right now)"}</div>`) +
     `<div><b>Reddit</b> gets: <code>${esc(rLabel)}</code>${rtReal !== rt ? " (hiring subreddits post less, so Reddit looks a bit further back; newest still first)" : ""}</div>` +
     `<div><b>Facebook</b>: links can't carry dates. After it opens, pick <b>Date posted</b> on the left.</div>` +
     `<div>Want other dates? Set exact dates in <a href="#settings">My gigs &amp; settings</a>.</div>`;
@@ -1020,7 +1025,7 @@ function wireAutocomplete(formId, inputId, boxId, select) {
 wireAutocomplete("quickForm", "quickAdd", "quickSugg", true);
 wireAutocomplete("addForm", "kwInput", "kwSugg", false);
 $("reset").addEventListener("click", () => {
-  keywords = DEFAULTS.slice(); current = keywords[0]; selected = [current]; multi = false; $("real").checked = true; setDays(7); save(); renderAll(); show("find");
+  keywords = DEFAULTS.slice(); current = keywords[0]; selected = [current]; multi = false; $("real").checked = true; setDays(1); save(); renderAll(); show("find");
 });
 
 // tabs with #hash so each section can be bookmarked
