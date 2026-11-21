@@ -429,7 +429,6 @@ const SUGGESTIONS = {
   "Animation": ["2D animator", "3D animator", "motion graphics designer", "storyboard artist", "explainer video animator", "Live2D animator", "character animator", "frame by frame animator", "animated logo", "video editor"],
   "Web & apps": ["website developer", "website designer", "frontend developer", "full stack developer", "WordPress developer", "Shopify developer", "Webflow developer", "landing page designer", "UI/UX designer", "app developer", "React developer"],
 };
-const HIRE_SUBS = ["HungryArtists", "forhire", "hireanartist", "artcommissions", "gameDevClassifieds", "DesignJobs", "freelance_forhire", "starvingartists", "commissions", "VTuberCommissions", "animationjobs", "jobbit"];
 const ROLE = { illustration: "illustrator", illustrations: "illustrator", animation: "animator", art: "artist", "web development": "web developer", "graphic design": "graphic designer", design: "designer" };
 const PLAT = {
   x: { name: "X / Twitter", c: "x" }, reddit: { name: "Reddit", c: "reddit" },
@@ -564,7 +563,6 @@ function xQuery(q) {
   return s + tail;
 }
 // Reddit says "hiring" and "hire" are the same word, so "hiring" also finds [For Hire] ads. Hide those.
-const R_NOT = ' NOT title:"for hire" NOT flair:"for hire" NOT title:"commissions open"';
 function untilNext(d) { const x = new Date(d + "T00:00:00"); x.setDate(x.getDate() + 1); return ymd(x); }
 // X/Bluesky "until:" means "before this day", so including today needs tomorrow's date,
 // which looks wrong. When the end date is today, leave "until:" out: no end means "up to now".
@@ -587,19 +585,39 @@ function redditT() {
   const d = (Date.now() - new Date(f + "T00:00:00")) / 864e5;
   return d <= 1 ? "day" : d <= 7 ? "week" : d <= 31 ? "month" : d <= 365 ? "year" : "all";
 }
-// Reddit search breaks with many operators, and hiring posts rarely use exact phrases.
-// flair: is kept: hiring subreddits tag client posts with a flair like "Hiring", "Patron" or "Paid".
+// Reddit search breaks with operators (NOT, title:, many ORs), so Reddit gets plain words only.
 const redditPlain = q => q.replace(/\b(title|self|nsfw):/gi, "").replace(/["()]/g, " ")
   .replace(/\b(OR|AND|NOT)\b/g, " ").replace(/\s+/g, " ").trim();
-// Which flair marks a CLIENT post in each subreddit (they differ).
-const SUB_FLAIR = { HungryArtists: "hiring", forhire: "hiring", hireanartist: "hiring", artcommissions: "patron", gameDevClassifieds: "paid", DesignJobs: "hiring", freelance_forhire: "hiring", starvingartists: "hiring", commissions: "patron", VTuberCommissions: "hiring", animationjobs: "hiring", jobbit: "hiring" };
+// Hiring posts on Reddit are few, so look back a week; newest are always at the top.
+const R_T = "week";
+// The flair (tag) each subreddit puts on CLIENT posts. Searching inside that flair = only people paying.
+// gameDevClassifieds has no single client flair: clients write [Paid] in the title, so search the word "paid".
+const REDDIT_SUBS = [
+  { s: "HungryArtists", f: "Hiring", for: "art" },
+  { s: "artcommissions", f: "Patron", for: "art" },
+  { s: "hireanartist", f: "Hiring", for: "art" },
+  { s: "forhire", f: "Hiring", for: "art design dev" },
+  { s: "DesignJobs", f: "Hiring", for: "design" },
+  { s: "gameDevClassifieds", w: "paid", for: "game" },
+];
+// Which kind of gig: art, design or dev (to put the right subreddits first).
+const gigKind = r => /develop|program|script|coder|wordpress|shopify|webflow|wix|react|next\.js|python|javascript|bot|extension|full stack|frontend|backend/i.test(r) ? "dev"
+  : /design|ui|ux|logo|brand|thumbnail|flyer|poster|banner|packaging|merch|t-shirt|font|icon|presentation/i.test(r) ? "design" : "art";
+const subsFor = r => {
+  const k = gigKind(r), game = /game|unity|unreal|godot|roblox|minecraft|sprite|pixel|level/i.test(r);
+  return REDDIT_SUBS.filter(x => x.for.split(" ").includes(k) || (game && x.for === "game"))
+    .sort((a, b) => (b.for.split(" ")[0] === k) - (a.for.split(" ")[0] === k));
+};
+const subQuery = (x, words) => (x.f ? `flair_name:"${x.f}"` : x.w) + (words ? " " + words : "");
+const subUrl = (x, words) => `https://www.reddit.com/r/${x.s}/search/?q=${enc(subQuery(x, words))}&restrict_sr=1&sort=new&t=${R_T}`;
 const URL_FOR = {
   x: q => `https://x.com/search?q=${enc(xQuery(q))}&f=live`,
-  reddit: (q, raw) => {
-    if (!isReal()) return `https://www.reddit.com/search/?q=${enc(q + R_NOT)}&sort=new&t=${redditT()}`;
-    const p = raw ? q : redditPlain(q), qq = (/\bhiring\b|\bflair:/i.test(p) ? p : "hiring " + p) + R_NOT;
-    const t = redditT();
-    return `https://www.reddit.com/r/${HIRE_SUBS.join("+")}/search/?q=${enc(qq)}&restrict_sr=1&sort=new&t=${t}`;
+  // opt = a subreddit from REDDIT_SUBS (search inside its client flair), or true = keep the words as they are.
+  reddit: (q, opt) => {
+    if (opt && typeof opt === "object") return subUrl(opt, q);
+    const p = opt === true ? q : redditPlain(q);
+    if (!isReal()) return `https://www.reddit.com/search/?q=${enc(p)}&sort=new&t=${R_T}`;
+    return `https://www.reddit.com/r/${REDDIT_SUBS.map(x => x.s).join("+")}/search/?q=${enc(p)}&restrict_sr=1&sort=new&t=${R_T}`;
   },
   fb: q => `https://www.facebook.com/search/posts/?q=${enc(q + (isReal() ? " paid" : ""))}`,
   bsky: q => `https://bsky.app/search?q=${enc(q + dateTerms("bsky"))}`,
@@ -616,16 +634,12 @@ const TEMPLATES = {
     { label: `freelance ${r}`, q: `"freelance ${r}" (need OR looking OR hiring)` },
     { label: `${r} + misspelled “comission”`, q: `"${r}" (comission OR commision OR comissions OR commisions OR c0mmission)` },
   ],
+  // First: each subreddit's own client flair + the gig. Then the plain words clients write in their titles.
   reddit: r => [
-    { label: `“Hiring” flair + ${r}`, q: `flair:hiring ${r}` },
-    { label: `“Patron” flair (buyers) + ${r}`, q: `flair:patron ${r}` },
-    { label: `“Paid” flair + ${r}`, q: `flair:paid ${r}` },
-    { label: `hiring ${an(r)}`, q: `hiring ${r}` },
-    { label: `paid ${r}`, q: `paid ${r}` },
-    { label: `looking for ${an(r)}`, q: `looking for ${r}` },
-    { label: `need ${an(r)}`, q: `need ${r}` },
-    { label: `commission ${an(r)}`, q: `commission ${r}` },
-    { label: `${r} needed`, q: `${r} needed` },
+    ...subsFor(r).map(x => ({ label: `r/${x.s} · ${x.f ? x.f + " posts" : "[Paid] posts"} · ${r}`, q: r, opt: x })),
+    { label: `“looking for ${an(r)}”`, q: `"looking for ${an(r)}"`, opt: true },
+    { label: `“need ${an(r)}”`, q: `"need ${an(r)}"`, opt: true },
+    { label: `${r} + budget`, q: `${r} budget`, opt: true },
   ],
   fb: r => [
     { label: `looking for ${an(r)}`, q: `looking for ${an(r)}` },
@@ -673,7 +687,7 @@ function platformCard(p, items, opts = {}) {
   const ul = card.querySelector("ul");
   const key = opts.key || p;
   const show = opts.wide || openMore.has(key) ? items : items.slice(0, VISIBLE);
-  show.forEach(t => { const li = document.createElement("li"); li.appendChild(link("search", p, URL_FOR[p](t.q, t.raw), esc(t.label))); ul.appendChild(li); });
+  show.forEach(t => { const li = document.createElement("li"); li.appendChild(link("search", p, URL_FOR[p](t.q, t.opt), esc(t.label))); ul.appendChild(li); });
   if (!opts.wide && items.length > VISIBLE) {
     const b = document.createElement("button"); b.type = "button"; b.className = "more";
     b.textContent = openMore.has(key) ? "Show fewer" : `Show ${items.length - VISIBLE} more searches`;
@@ -684,10 +698,7 @@ function platformCard(p, items, opts = {}) {
   if (opts.subs) {
     const d = document.createElement("div"); d.className = "subs";
     // Each chip: that subreddit's newest posts with its client flair only.
-    HIRE_SUBS.forEach(s => {
-      const fl = SUB_FLAIR[s] || "hiring";
-      d.appendChild(link("", "reddit", `https://www.reddit.com/r/${s}/search/?q=${enc("flair:" + fl)}&restrict_sr=1&sort=new`, `r/${s} · ${fl[0].toUpperCase() + fl.slice(1)}`));
-    });
+    REDDIT_SUBS.forEach(x => d.appendChild(link("", "reddit", subUrl(x, ""), `r/${x.s} · ${x.f || "[Paid]"}`)));
     const lab = document.createElement("p"); lab.className = "pnote"; lab.style.margin = "0 0 8px";
     lab.textContent = "Client flair only, per subreddit:";
     card.appendChild(lab); card.appendChild(d);
@@ -701,14 +712,12 @@ function renderDates() {
   const toTxt = !to || to >= today ? `today (${niceDay(today)})` : niceDay(to);
   const t24 = d => d.toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
   $("dateLine").textContent = days === 1 ? `✓ Last 24 hours: ${t24(ago24())} → now` : from ? `✓ ${niceDay(from)} → ${toTxt}` : "No start date: all time";
-  const rt = redditT(), rtReal = rt;
-  const rLabel = { day: "past 24 hours", week: "past week", month: "past month", year: "past year", all: "all time" }[rtReal];
   const terms = dateTerms().trim() || "(no dates)";
   $("dateDetail").innerHTML = (days === 1
     ? `<div><b>X / Twitter</b> gets: <code>${esc(terms)}</code> = exactly ${esc(t24(ago24()))}, up to right now</div>` +
       `<div><b>Bluesky</b> gets: <code>${esc(dateTerms("bsky").trim())}</code> (Bluesky only takes dates, so it can show up to a day more)</div>`
     : `<div><b>X / Twitter</b> and <b>Bluesky</b> get: <code>${esc(terms)}</code>${to && to < today ? "" : " (no end date, so it runs up to right now)"}</div>`) +
-    `<div><b>Reddit</b> gets: <code>${esc(rLabel)}</code>${rtReal !== rt ? " (hiring subreddits post less, so Reddit looks a bit further back; newest still first)" : ""}</div>` +
+    `<div><b>Reddit</b> gets: <code>past week, newest first</code> (hiring subreddits get only a few client posts a day, so a 24-hour Reddit search is often empty; the newest are at the top, check the time on each post)</div>` +
     `<div><b>Facebook</b>: links can't carry dates. After it opens, pick <b>Date posted</b> on the left.</div>` +
     `<div>Want other dates? Set exact dates in <a href="#settings">My gigs &amp; settings</a>.</div>`;
 }
@@ -729,7 +738,6 @@ function multiSearches(roles) {
   const xr = [];
   roles.slice(0, 6).forEach(r => { if (!xr.length || xr.join(" OR ").length + r.length < 170) xr.push(r); });
   const G = "(" + xr.map(r => `"${r}"`).join(" OR ") + ")";
-  const R = "(" + roles.slice(0, 8).map(qt).join(" OR ") + ")";
   return {
     x: [
       { label: "any of them + hiring words", q: `${G} (hiring OR "looking for" OR need OR wanted OR seeking)` },
@@ -740,13 +748,12 @@ function multiSearches(roles) {
       { label: "can anyone recommend one?", q: `${G} (recommend OR recommendations OR "anyone know")` },
       { label: "any of them + misspelled “comission”", q: `${G} (comission OR commision OR comissions OR c0mmission)` },
     ],
+    // Reddit breaks on long "this OR that" searches, so: each gig in its best subreddit's client flair,
+    // then every client post in each fitting subreddit (all gigs, newest first).
     reddit: [
-      { label: "“Hiring” flair + any of them", q: `flair:hiring ${R}`, raw: true },
-      { label: "“Patron” flair (buyers) + any of them", q: `flair:patron ${R}`, raw: true },
-      { label: "“Paid” flair + any of them", q: `flair:paid ${R}`, raw: true },
-      { label: "hiring + any of them", q: `hiring ${R}`, raw: true },
-      { label: "paid + any of them", q: `paid ${R}`, raw: true },
-      { label: "commission + any of them", q: `commission ${R}`, raw: true },
+      ...roles.slice(0, 8).map(r => { const x = subsFor(r)[0]; return { label: `r/${x.s} · ${x.f ? x.f + " posts" : "[Paid] posts"} · ${r}`, q: r, opt: x }; }),
+      ...REDDIT_SUBS.filter(x => roles.some(r => subsFor(r).includes(x)))
+        .map(x => ({ label: `r/${x.s} · all ${x.f ? x.f : "[Paid]"} posts`, q: "", opt: x })),
     ],
     // Facebook and Bluesky can't search "this OR that", so one search per gig.
     fb: roles.slice(0, 10).map(r => ({ label: `looking for ${an(r)}`, q: `looking for ${an(r)}` })),
