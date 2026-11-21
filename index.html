@@ -128,6 +128,12 @@ form.quick { margin-top: 14px; }
 .ac button:hover, .ac button.best { border-style: solid; background: var(--sun); color: #18171c; }
 .ac button.all { background: var(--blue); color: #fff; border-style: solid; }
 .ac button.on { opacity: .5; cursor: default; }
+.gigtools { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 14px; }
+.btn.small { font-size: 13px; padding: 8px 11px; }
+.btn.ghost[aria-pressed="true"] { background: var(--blue); color: #fff; }
+.hot { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; margin-left: 4px; border-radius: 999px; font: 700 12px/1 var(--mono); background: var(--soft); color: var(--ink); border: 1.5px solid var(--line); }
+.hot.big { background: var(--sun); color: #18171c; }
+#hotRow { margin-top: 14px; }
 .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--ink); color: var(--paper); font-weight: 700; padding: 12px 18px; border-radius: 14px; border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--pink); z-index: 20; max-width: calc(100% - 32px); }
 .toast[hidden] { display: none; }
 input[type=text], input[type=date] {
@@ -282,7 +288,13 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
   <section class="view stack" id="find" role="tabpanel" aria-labelledby="tab-find">
     <div class="panel">
       <h2 class="step-title"><span class="num">1</span>What do you do?</h2>
+      <div class="gigtools">
+        <button class="btn ghost small" type="button" id="multiBtn" aria-pressed="false">Pick several</button>
+        <button class="btn ghost small" type="button" id="allBtn">Select all gigs</button>
+        <button class="btn ghost small" type="button" id="oneBtn">Just one</button>
+      </div>
       <div class="gigs" id="gigs"></div>
+      <div class="ac" id="hotRow"></div>
       <form class="add quick" id="quickForm">
         <input type="text" id="quickAdd" placeholder="Type any gig: pixel, comic, game, website…" autocomplete="off" aria-label="Add a gig" aria-describedby="quickSugg">
         <button class="btn" type="submit">Add</button>
@@ -321,10 +333,6 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
       <div class="platforms" id="platforms"></div>
     </div>
 
-    <div class="panel">
-      <h2 class="step-title" style="font-size:20px">Search all my gigs at once</h2>
-      <div class="allrow" id="allrow"></div>
-    </div>
   </section>
 
   <!-- TRENDING -->
@@ -552,9 +560,9 @@ const redditPlain = q => q.replace(/\b(title|self|nsfw):/gi, "").replace(/["()]/
 const SUB_FLAIR = { HungryArtists: "hiring", forhire: "hiring", hireanartist: "hiring", artcommissions: "patron", gameDevClassifieds: "paid", DesignJobs: "hiring", freelance_forhire: "hiring", starvingartists: "hiring", commissions: "patron", VTuberCommissions: "hiring", animationjobs: "hiring", jobbit: "hiring" };
 const URL_FOR = {
   x: q => `https://x.com/search?q=${enc(q + X_BASE + (isReal() ? X_REAL : "") + dateTerms())}&f=live`,
-  reddit: q => {
+  reddit: (q, raw) => {
     if (!isReal()) return `https://www.reddit.com/search/?q=${enc(q)}&sort=new&t=${redditT()}`;
-    const p = redditPlain(q), qq = /\bhiring\b|\bflair:/i.test(p) ? p : "hiring " + p;
+    const p = raw ? q : redditPlain(q), qq = /\bhiring\b|\bflair:/i.test(p) ? p : "hiring " + p;
     const t = ["day", "week"].includes(redditT()) ? "month" : redditT();
     return `https://www.reddit.com/r/${HIRE_SUBS.join("+")}/search/?q=${enc(qq)}&restrict_sr=1&sort=new&t=${t}`;
   },
@@ -630,7 +638,7 @@ function platformCard(p, items, opts = {}) {
   const ul = card.querySelector("ul");
   const key = opts.key || p;
   const show = opts.wide || openMore.has(key) ? items : items.slice(0, VISIBLE);
-  show.forEach(t => { const li = document.createElement("li"); li.appendChild(link("search", p, URL_FOR[p](t.q), esc(t.label))); ul.appendChild(li); });
+  show.forEach(t => { const li = document.createElement("li"); li.appendChild(link("search", p, URL_FOR[p](t.q, t.raw), esc(t.label))); ul.appendChild(li); });
   if (!opts.wide && items.length > VISIBLE) {
     const b = document.createElement("button"); b.type = "button"; b.className = "more";
     b.textContent = openMore.has(key) ? "Show fewer" : `Show ${items.length - VISIBLE} more searches`;
@@ -652,41 +660,121 @@ function platformCard(p, items, opts = {}) {
   return card;
 }
 
+// ---- several gigs at once ----
+let multi = store.get("pf.multi", false);
+let selected = store.get("pf.selected", [current]);
+const qt = v => v.includes(" ") ? `"${v}"` : v;
+// Searches that cover several gigs in one click.
+function multiSearches(roles) {
+  const xr = roles.slice(0, 6);                       // X searches get too long past ~6 names
+  const G = "(" + xr.map(r => `"${r}"`).join(" OR ") + ")";
+  const R = "(" + roles.slice(0, 8).map(qt).join(" OR ") + ")";
+  return {
+    x: [
+      { label: "any of them + hiring words", q: `${G} (hiring OR "looking for" OR need OR wanted OR seeking)` },
+      { label: "want to commission any of them", q: `${G} (commission OR commissioning) (looking OR want OR need)` },
+      { label: "paid job for any of them", q: `${G} (paid OR budget OR pay OR rate)` },
+      { label: "any of them + “drop / show me your work”", q: `${G} ("drop your" OR "show me your" OR "reply with your" OR qrt)` },
+      { label: "any of them + portfolio / DM", q: `${G} (portfolio OR "dm me" OR "send your work")` },
+      { label: "can anyone recommend one?", q: `${G} (recommend OR recommendations OR "anyone know")` },
+      { label: "any of them + misspelled “comission”", q: `${G} (comission OR commision OR comissions OR c0mmission)` },
+    ],
+    reddit: [
+      { label: "“Hiring” flair + any of them", q: `flair:hiring ${R}`, raw: true },
+      { label: "“Patron” flair (buyers) + any of them", q: `flair:patron ${R}`, raw: true },
+      { label: "“Paid” flair + any of them", q: `flair:paid ${R}`, raw: true },
+      { label: "hiring + any of them", q: `hiring ${R}`, raw: true },
+      { label: "paid + any of them", q: `paid ${R}`, raw: true },
+      { label: "commission + any of them", q: `commission ${R}`, raw: true },
+    ],
+    // Facebook and Bluesky can't search "this OR that", so one search per gig.
+    fb: roles.slice(0, 10).map(r => ({ label: `looking for ${an(r)}`, q: `looking for ${an(r)}` })),
+    bsky: roles.slice(0, 10).map(r => ({ label: `“looking for ${an(r)}”`, q: `"looking for ${an(r)}"` })),
+    xNote: roles.length > 6 ? `X searches use your first 6 gigs (${xr.join(", ")}): longer X searches stop working.` : "",
+  };
+}
+
+// ---- which gigs clients posted about this week (from the hourly update) ----
+function hotMap() {
+  const m = new Map();
+  (trending && Array.isArray(trending.roles) ? trending.roles : []).forEach(r => {
+    if (!r || typeof r.name !== "string") return;
+    let n = Number.isFinite(r.count) ? r.count : parseInt(String(r.note || "").match(/\d+/)?.[0] || "0", 10);
+    m.set(r.name.toLowerCase(), n || 0);
+  });
+  return m;
+}
+function hotCount(k) {
+  // Exact gig only: "artist" must not borrow the count of "pixel artist".
+  return hotMap().get(role(k).toLowerCase()) || 0;
+}
+
 function renderFind() {
-  if (!keywords.includes(current)) current = keywords[0] || "";
-  store.set("pf.current", current);
+  selected = selected.filter(k => keywords.includes(k));
+  if (!selected.length && keywords.length) selected = [keywords[0]];
+  if (!multi && selected.length > 1) selected = [selected[0]];
+  current = selected[0] || "";
+  store.set("pf.current", current); store.set("pf.selected", selected); store.set("pf.multi", multi);
+  $("multiBtn").setAttribute("aria-pressed", String(multi));
+  $("multiBtn").textContent = multi ? "✓ Picking several" : "Pick several";
   const gigs = $("gigs"); gigs.innerHTML = "";
   keywords.forEach(k => {
     const b = document.createElement("button"); b.type = "button"; b.className = "gig";
-    b.textContent = k; b.setAttribute("aria-pressed", String(k === current));
-    b.onclick = () => { current = k; renderFind(); };
+    const n = hotCount(k);
+    b.innerHTML = esc(k) + (n ? ` <span class="hot${n >= 2 ? " big" : ""}" title="${n} client posts this week">${n}</span>` : "");
+    b.setAttribute("aria-pressed", String(selected.includes(k)));
+    b.onclick = () => {
+      if (!multi) selected = [k];
+      else if (selected.includes(k)) { if (selected.length > 1) selected = selected.filter(x => x !== k); }
+      else selected = [...selected, k];
+      renderFind();
+    };
     gigs.appendChild(b);
   });
+  // gigs with 2+ client posts this week
+  const hr = $("hotRow"); hr.innerHTML = "";
+  const hot = [...hotMap()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  if (trending) {
+    const lab = document.createElement("span"); lab.className = "aclab";
+    lab.textContent = hot.length ? "2+ client posts this week:" : "No gig has 2+ client posts this week yet. The hourly update fills this in.";
+    hr.appendChild(lab);
+    hot.forEach(([name, n]) => {
+      const b = document.createElement("button"); b.type = "button";
+      const have = keywords.find(k => k.toLowerCase() === name);
+      b.innerHTML = `${have ? "✓" : "+"} ${esc(name)} <span class="hot big">${n}</span>`;
+      b.onclick = () => {
+        const g = have || name;
+        if (!have) keywords.push(g);
+        selected = multi ? [...new Set([...selected, g])] : [g];
+        save(); renderAll();
+      };
+      hr.appendChild(b);
+    });
+  }
 
   document.querySelectorAll("#range button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.days === days)));
   document.querySelectorAll("#openMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === openMode)));
   $("openBox").hidden = inFrame; // inside claude.ai the page can't take over its own tab
-  const r = role(current || "artist");
-  $("gigName").textContent = current ? r : "your gig";
   const box = $("platforms"); box.innerHTML = "";
-  if (!current) { box.innerHTML = `<p class="empty">Add a gig in step 1 to get searches.</p>`; return; }
+  if (!current) { $("gigName").textContent = "your gig"; box.innerHTML = `<p class="empty">Add a gig in step 1 to get searches.</p>`; return; }
+  const roles = [...new Set(selected.map(role))];
+  let S;
+  if (roles.length === 1) {
+    const r = roles[0];
+    $("gigName").textContent = r;
+    S = { x: TEMPLATES.x(r), reddit: TEMPLATES.reddit(r), fb: TEMPLATES.fb(r), bsky: TEMPLATES.bsky(r), xNote: "" };
+  } else {
+    $("gigName").textContent = roles.length === keywords.length ? `all ${roles.length} gigs` : `${roles.length} gigs`;
+    S = multiSearches(roles);
+  }
   box.append(
-    platformCard("x", TEMPLATES.x(r)),
-    platformCard("reddit", TEMPLATES.reddit(r), { subs: true }),
-    platformCard("fb", TEMPLATES.fb(r), { note: "Facebook links can't carry dates: use the “Date posted” filter on the left." }),
-    platformCard("bsky", TEMPLATES.bsky(r)),
+    platformCard("x", S.x, { note: S.xNote, key: "x" + roles.length }),
+    platformCard("reddit", S.reddit, { subs: true, key: "r" + roles.length }),
+    platformCard("fb", S.fb, { note: "Facebook links can't carry dates: use the “Date posted” filter on the left.", key: "f" + roles.length }),
+    platformCard("bsky", S.bsky, { key: "b" + roles.length }),
     platformCard("x", CLEVER, { wide: true, key: "clever", title: "Sneaky client posts on X", hint: "clients who dodge bots and skip the word “hiring”" }),
   );
-  const all = $("allrow"); all.innerHTML = "";
-  const roles = [...new Set(keywords.map(role))];
-  const orGroup = l => l.length === 1 ? (l[0].includes(" ") ? `"${l[0]}"` : l[0]) : "(" + l.map(v => v.includes(" ") ? `"${v}"` : v).join(" OR ") + ")";
-  const hire = ' (hiring OR "looking for" OR need OR commission OR paid)';
-  all.append(
-    link("", "x", URL_FOR.x(orGroup(roles.slice(0, 6)) + hire), "X: all my gigs ↗"),
-    link("", "reddit", URL_FOR.reddit(roles.slice(0, 3).join(" ")), "Reddit: hiring posts ↗"),
-    link("", "bsky", URL_FOR.bsky(`"looking for" ${roles[0]}`), "Bluesky ↗"),
-  );
-  $("ready").textContent = `${TEMPLATES.x(r).length + TEMPLATES.reddit(r).length + TEMPLATES.fb(r).length + TEMPLATES.bsky(r).length + CLEVER.length} searches ready`;
+  $("ready").textContent = `${S.x.length + S.reddit.length + S.fb.length + S.bsky.length + CLEVER.length} searches ready`;
 }
 
 function renderSettings() {
@@ -760,6 +848,7 @@ function renderTrending() {
   if (!posts.children.length) posts.innerHTML = `<li class="empty">None in this update.</li>`;
   const n = posts.querySelectorAll("li:not(.empty)").length;
   $("trCount").hidden = !n; $("trCount").textContent = n;
+  if (!renderTrending.inAll) renderFind(); // refresh the "2+ posts" badges
 }
 function renderMarket() {
   if (!market) return;
@@ -803,10 +892,16 @@ function addGig(v, select) {
   if (!v) return;
   const found = keywords.find(k => k.toLowerCase() === v.toLowerCase());
   if (!found) keywords.push(v);
-  if (select) current = found || v;
+  if (select) { const g = found || v; selected = multi ? [...new Set([...selected, g])] : [g]; current = selected[0]; }
   save(); renderAll();
 }
-function renderAll() { renderFind(); renderSettings(); renderTrending(); renderMarket(); }
+function renderAll() {
+  renderTrending.inAll = true; renderTrending(); renderTrending.inAll = false;
+  renderFind(); renderSettings(); renderMarket();
+}
+$("multiBtn").addEventListener("click", () => { multi = !multi; renderFind(); });
+$("allBtn").addEventListener("click", () => { multi = true; selected = keywords.slice(); renderFind(); });
+$("oneBtn").addEventListener("click", () => { multi = false; selected = selected.slice(0, 1); renderFind(); });
 
 document.querySelectorAll("#range button").forEach(b => b.addEventListener("click", () => { setDays(+b.dataset.days); save(); renderAll(); }));
 $("real").addEventListener("change", () => { save(); renderAll(); });
@@ -847,7 +942,7 @@ function wireAutocomplete(formId, inputId, boxId, select) {
       all.textContent = `Add all ${fresh.length}`;
       all.onclick = () => {
         fresh.forEach(g => keywords.push(g));
-        if (select) current = fresh[0];
+        if (select) { multi = true; selected = [...new Set([...selected, ...fresh])]; }
         save(); renderAll(); toast(`Added ${fresh.length} gigs`); input.value = ""; draw();
       };
       box.appendChild(all);
@@ -868,7 +963,7 @@ function wireAutocomplete(formId, inputId, boxId, select) {
 wireAutocomplete("quickForm", "quickAdd", "quickSugg", true);
 wireAutocomplete("addForm", "kwInput", "kwSugg", false);
 $("reset").addEventListener("click", () => {
-  keywords = DEFAULTS.slice(); current = keywords[0]; $("real").checked = true; setDays(7); save(); renderAll(); show("find");
+  keywords = DEFAULTS.slice(); current = keywords[0]; selected = [current]; multi = false; $("real").checked = true; setDays(7); save(); renderAll(); show("find");
 });
 
 // tabs with #hash so each section can be bookmarked
