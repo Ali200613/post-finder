@@ -1,0 +1,297 @@
+{
+ "market": {
+  "updatedAt": "2026-11-21T07:00:00+05:00",
+  "period": "November 2026",
+  "summary": "Based on Upwork's 2026 in-demand skills report, art and book marketplaces, and job boards for November 2026. Websites, logos and video are where most clients are. VTuber work and book illustration are strong niches. More and more clients ask for \"no AI\". Each keyword opens that site's newest posts.",
+  "niches": [
+   {
+    "name": "Websites & landing pages",
+    "level": "high",
+    "why": "Full-stack, web design and front-end are Upwork's most-hired coding skills in 2026. Job boards this month are full of redesigns, WordPress and online-shop builds.",
+    "source": {
+     "title": "Upwork in-demand skills 2026",
+     "url": "https://www.upwork.com/resources/in-demand-jobs-and-skills"
+    },
+    "keywords": {
+     "x": [
+      "\"need a website\" (business OR shop OR store)",
+      "\"looking for a web developer\"",
+      "\"shopify developer\" (need OR looking OR hiring)",
+      "\"landing page\" (need OR hiring) designer"
+     ],
+     "reddit": [
+      "title:hiring website",
+      "title:hiring shopify",
+      "title:hiring wordpress",
+      "\"landing page\" hiring"
+     ],
+     "facebook": [
+      "need a website for my business",
+      "looking for web developer",
+      "shopify expert needed",
+      "wordpress developer needed"
+     ],
+     "bluesky": [
+      "\"need a website\"",
+      "\"looking for a web developer\"",
+      "\"web designer\" recommend"
+     ]
+    }
+   },
+   {
+    "name": "Logos & graphic design",
+    "level": "high",
+    "why": "Graphic design is #1 in Upwork's design category, and logo design work grew about 44% in a year. Thumbnails and flyers are steady small jobs.",
+    "source": {
+     "title": "Upwork in-demand skills 2026",
+     "url": "https://www.upwork.com/resources/in-demand-jobs-and-skills"
+    },
+    "keywords": {
+     "x": [
+      "\"need a logo\"",
+      "\"looking for a logo designer\"",
+      "\"graphic designer\" (hiring OR \"looking for\")",
+      "\"thumbnail designer\" (need OR looking)"
+     ],
+     "reddit": [
+      "title:hiring logo",
+      "title:hiring \"graphic designer\"",
+      "title:hiring thumbnail"
+     ],
+     "facebook": [
+      "need a logo for my business",
+      "looking for graphic designer",
+      "flyer design needed"
+     ],
+     "bluesky": [
+      "\"need a logo\"",
+      "\"looking for a graphic designer\"",
+      "\"logo designer\""
+     ]
+    }
+   },
+   {
+    "name": "Animation, explainers & motion graphics",
+    "level": "rising",
+    "why": "Video production jumped from 7th to 4th in Upwork's creative skills. Clients want explainer videos, animated logos and YouTube animation. Some roles combine motion design with web skills.",
+    "source": {
+     "title": "Upwork in-demand skills 2026",
+     "url": "https://www.upwork.com/resources/in-demand-jobs-and-skills"
+    },
+    "keywords": {
+     "x": [
+      "\"looking for an animator\"",
+      "\"explainer video\" (need OR looking OR hiring)",
+      "\"motion graphics\" (hiring OR \"looking for\")",
+      "\"animated logo\" need"
+     ],
+     "reddit": [
+      "title:hiring animator",
+      "title:hiring \"motion graphics\"",
+      "title:hiring \"explainer video\"",
+      "title:paid animation"
+     ],
+     "facebook": [
+      "looking for animator for youtube",
+      "need explainer video",
+      "motion graphics designer needed"
+     ],
+     "bluesky": [
+      "\"looking for an animator\"",
+      "\"motion designer\" hiring",
+      "\"explainer video\""
+     ]
+    }
+   },
+   {
+    "name": "VTuber models, Live2D rigging & emotes",
+    "level": "high",
+    "why": "A busy niche. Model art and rigging are often bought separately, so you can sell art without rigging. Emote packs go for about $100–250 and rigged models for $300–1,500 or more.",
+    "source": {
+     "title": "artbase: VTuber commissions guide",
+     "url": "https://blog.artbase.au/blog/vtuber-art-commissions-guide/"
+    },
+    "keywords": {
+     "x": [
+      "\"looking for a live2d rigger\"",
+      "\"vtuber model\" (commission OR \"looking for\")",
+      "\"need emotes\" OR \"looking for an emote artist\"",
+      "\"vtuber artist\" looking"
+     ],
+     "reddit": [
+      "title:hiring vtuber",
+      "title:hiring live2d",
+      "title:hiring emotes"
+     ],
+     "facebook": [
+      "looking for vtuber artist",
+      "live2d rigger needed",
+      "twitch emotes commission"
+     ],
+     "bluesky": [
+      "\"looking for a rigger\"",
+      "\"vtuber model\" commission",
+      "\"need emotes\"",
+      "#VTuber looking for artist"
+     ]
+    }
+   },
+   {
+    "name": "Book illustration & covers",
+    "level": "rising",
+    "why": "Self-published authors hire their own illustrators. Reedsy saw almost 4 times more cover requests asking for \"no AI\" in 2026 than in 2025, which works in a human artist's favour.",
+    "source": {
+     "title": "Reedsy: 2026 book cover trends",
+     "url": "https://reedsy.com/blog/book-cover-trends/"
+    },
+    "keywords": {
+     "x": [
+      "\"children's book illustrator\" (looking OR need OR hiring)",
+      "\"book cover artist\" (looking OR need)",
+      "\"illustrator for my book\""
+     ],
+     "reddit": [
+      "title:hiring \"book cover\"",
+      "title:hiring \"children's book\"",
+      "title:hiring illustrator"
+     ],
+     "facebook": [
+      "looking for children's book illustrator",
+      "need book cover designer",
+      "illustrator for my book"
+     ],
+     "bluesky": [
+      "\"illustrator for my book\"",
+      "\"book cover artist\"",
+      "#booksky illustrator"
+     ]
+    }
+   },
+   {
+    "name": "Indie game art (pixel art, sprites, 2D)",
+    "level": "steady",
+    "why": "Indie studios regularly look for pixel artists, 2D animators and background artists. Many offers are small or revenue-share only, so check the pay first.",
+    "source": {
+     "title": "Freelancer: pixel art",
+     "url": "https://www.freelancer.com/hire/pixel-art"
+    },
+    "keywords": {
+     "x": [
+      "\"looking for a pixel artist\"",
+      "#gamedev \"looking for an artist\" paid",
+      "\"2d artist\" (hiring OR \"looking for\") game"
+     ],
+     "reddit": [
+      "title:paid pixel",
+      "title:paid \"2d artist\"",
+      "title:hiring sprite"
+     ],
+     "facebook": [
+      "looking for pixel artist for game",
+      "2d game artist needed"
+     ],
+     "bluesky": [
+      "\"looking for a pixel artist\"",
+      "#gamedev artist wanted",
+      "#indiedev hiring artist"
+     ]
+    }
+   },
+   {
+    "name": "Character design & custom art",
+    "level": "steady",
+    "why": "Character sheets, OCs and D&D characters are the classic commission. Buyers pay more for clearly human-made art than for AI images.",
+    "source": {
+     "title": "Art market trends 2026",
+     "url": "https://impressivemagazine.com/art-market-trends-2026/"
+    },
+    "keywords": {
+     "x": [
+      "\"character design\" (commission OR \"looking for\")",
+      "\"reference sheet\" commission looking",
+      "\"dnd character\" commission"
+     ],
+     "reddit": [
+      "title:hiring \"character design\"",
+      "title:hiring \"reference sheet\"",
+      "title:hiring dnd"
+     ],
+     "facebook": [
+      "looking for character designer",
+      "commission dnd character art"
+     ],
+     "bluesky": [
+      "\"character design\" commission",
+      "\"looking for an artist\" oc",
+      "\"dnd character\" commission"
+     ]
+    }
+   }
+  ],
+  "tips": [
+   "Write \"100% hand-drawn, no AI\" in your profile and replies. More clients are asking for it.",
+   "Websites + animation together is a strong combo: some clients want motion design and front-end in one person.",
+   "Adobe stopped selling Animate on March 1, 2026. Learning another tool, like Toon Boom, Spine, Rive or After Effects, matches what clients will ask for.",
+   "Watch out for very low budgets ($10 jobs exist) and 'revenue share only' game offers.",
+   "Jobs fixing or editing AI images and video grew fast on Upwork (+95% and +329%). That's extra work if you're open to it.",
+   "This report covers the month. For what clients posted today and this week, look at 'Trending now' below, which updates every morning."
+  ]
+ },
+ "trending": {
+  "updatedAt": "2026-11-21T06:15:00+05:00",
+  "roles": [
+   {
+    "name": "2d animator",
+    "note": "kids' YouTube videos, short animation series"
+   },
+   {
+    "name": "animator illustrator",
+    "note": "brand videos and social content"
+   },
+   {
+    "name": "3d animator",
+    "note": "kids' videos, game contracts"
+   },
+   {
+    "name": "illustrator",
+    "note": "steady freelance listings"
+   },
+   {
+    "name": "web developer",
+    "note": "small presentation pages"
+   }
+  ],
+  "phrases": [
+   {
+    "text": "[hiring] web developer"
+   },
+   {
+    "text": "hand-crafted animation no AI"
+   },
+   {
+    "text": "animator for kids youtube channel"
+   },
+   {
+    "text": "looking for an illustrator"
+   }
+  ],
+  "posts": [
+   {
+    "date": "2026-11-18",
+    "platform": "web",
+    "title": "AWN Jobs Roundup, Nov 18: 70 animation and VFX openings worldwide",
+    "url": "https://www.awn.com/news/awn-jobs-roundup-november-18-70-animation-and-vfx-openings-worldwide"
+   },
+   {
+    "platform": "web",
+    "title": "Freelancer.com: 2D animation jobs (e.g. 10 short hand-made animations; kids' YouTube videos)",
+    "url": "https://www.freelancer.com/jobs/2d-animation/"
+   },
+   {
+    "platform": "web",
+    "title": "Freelancer.com: illustration jobs",
+    "url": "https://www.freelancer.com/jobs/illustration"
+   }
+  ]
+ }
+}

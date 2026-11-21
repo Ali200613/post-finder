@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Find new, real, paid client posts for artists, animators, illustrators and web developers on X, Reddit, Facebook and Bluesky.">
+<title>Post Finder</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --ink: #1d1c1a; --muted: #6b6862; --line: #e4e1da;
+    --accent: #3d5afe; --accent-soft: #e8ecff;
+    --x: #111111; --reddit: #e8501f; --fb: #1a6ef0; --bsky: #0866ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151513; --card: #1f1e1c; --ink: #f1efea; --muted: #a09c94; --line: #33312d;
+      --accent: #8c9eff; --accent-soft: #262b45;
+      --x: #e9e9e9; --reddit: #ff7a4d; --fb: #6aa3ff; --bsky: #5aa9ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+    margin: 32px 0 10px; font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-soft);
+    color: var(--ink); border-radius: 999px; padding: 5px 6px 5px 12px; font-size: 14px; }
+  .chip button { border: 0; background: transparent; color: var(--muted); cursor: pointer;
+    font-size: 16px; line-height: 1; width: 22px; height: 22px; border-radius: 50%; }
+  .chip button:hover { background: rgba(0,0,0,.08); color: var(--ink); }
+  form.add { display: flex; gap: 8px; }
+  input[type=text] { flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--ink); font: inherit; }
+  button.btn { padding: 9px 14px; border-radius: 8px; border: 0; background: var(--accent);
+    color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  @media (prefers-color-scheme: dark) { button.btn { color: #101322; } }
+
+  .sugg { margin-top: 14px; }
+  .sugg summary { cursor: pointer; color: var(--muted); font-size: 14px; font-weight: 600; }
+  .scat { margin-top: 10px; }
+  .scat b { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin-bottom: 6px; }
+  .scat .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .scat button { border: 1px dashed var(--line); background: var(--bg); color: var(--ink); font: inherit;
+    font-size: 13px; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
+  .scat button:hover { border-color: var(--accent); color: var(--accent); }
+  .scat button.added { border-style: solid; color: var(--muted); opacity: .55; cursor: default; }
+  .opts { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid var(--line); }
+  .opts label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .dates { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 14px; }
+  .dates label { display: flex; align-items: center; gap: 8px; }
+  input[type=date] { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--ink); font: inherit; color-scheme: light dark; }
+  .quick { display: flex; flex-wrap: wrap; gap: 6px; }
+  .quick button { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+  .quick button:hover, .quick button.on { border-color: var(--accent); color: var(--accent); }
+  .datenote { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 13px; }
+
+  .big { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 760px) { .big { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 460px) { .big { grid-template-columns: 1fr; } td.links { white-space: normal; } }
+  a.plat { display: block; text-decoration: none; color: var(--ink); background: var(--card);
+    border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 10px;
+    padding: 14px 16px; transition: transform .08s, box-shadow .08s; }
+  a.plat:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,.08); }
+  a.plat b { display: block; color: var(--c); font-size: 16px; }
+  a.plat span { color: var(--muted); font-size: 13px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 10px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  td.kw { font-weight: 600; width: 34%; }
+  td.links { text-align: right; white-space: nowrap; }
+  a.pill { display: inline-block; margin-left: 6px; padding: 4px 11px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; text-decoration: none; color: var(--c);
+    border: 1px solid var(--c); }
+  a.pill:hover { background: var(--c); color: var(--card); }
+
+  .subs { display: flex; flex-wrap: wrap; gap: 8px; }
+  .subs a { text-decoration: none; color: var(--reddit); border: 1px solid var(--line);
+    background: var(--card); padding: 6px 12px; border-radius: 8px; font-size: 14px; }
+  .subs a:hover { border-color: var(--reddit); }
+  .subs small { color: var(--muted); }
+
+  .hint { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+  .hint b { color: var(--ink); }
+  .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+  .tabs button { border: 0; background: none; color: var(--muted); font: inherit; font-weight: 600;
+    padding: 8px 14px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+  .tabs button.on { color: var(--c); border-bottom-color: var(--c); }
+  .group { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .group:last-child { border-bottom: 0; }
+  .group h3 { margin: 0 0 8px; font-size: 14px; }
+  .plist { display: flex; flex-wrap: wrap; gap: 8px; }
+  a.phrase { text-decoration: none; color: var(--c); border: 1px solid var(--line); background: var(--bg);
+    padding: 6px 12px; border-radius: 8px; font-size: 14px; }
+  a.phrase:hover { border-color: var(--c); background: var(--card); }
+  .upd { text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 6px; }
+  .trsec { padding: 4px 0 14px; }
+  .trsec + .trsec { border-top: 1px solid var(--line); padding-top: 14px; }
+  .trsec h3 { margin: 0 0 10px; font-size: 14px; }
+  .trsec h3 small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .trsec .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .trole { border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit;
+    font-size: 14px; padding: 6px 12px; border-radius: 999px; cursor: pointer; text-align: left; }
+  .trole:hover { border-color: var(--accent); }
+  .trole small { color: var(--muted); margin-left: 6px; }
+  .trole.added { opacity: .6; cursor: default; }
+  #trPhrases td.kw { font-weight: 400; }
+  ul.posts { list-style: none; margin: 0; padding: 0; }
+  ul.posts li { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: baseline; }
+  ul.posts li:last-child { border-bottom: 0; }
+  ul.posts a { color: var(--ink); text-decoration: none; flex: 1; }
+  ul.posts a:hover { text-decoration: underline; }
+  .badge { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--c); min-width: 64px; }
+  .pdate { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .mksum { margin: 0 0 6px; color: var(--muted); font-size: 14px; }
+  .niche { padding: 14px 0; border-top: 1px solid var(--line); }
+  .niche-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .niche-head h3 { margin: 0; font-size: 16px; }
+  .lvl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .lvl.high { background: #e6f6ec; color: #17803d; }
+  .lvl.rising { background: #fff3dc; color: #a35b00; }
+  @media (prefers-color-scheme: dark) { .lvl.high { background: #173624; color: #6fdc96; } .lvl.rising { background: #3a2a0f; color: #ffc163; } }
+  .why { margin: 6px 0 10px; font-size: 14px; color: var(--muted); }
+  .why a { color: var(--muted); }
+  .kwrow { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0; }
+  .kwrow .plab { min-width: 74px; font-size: 12px; font-weight: 700; color: var(--c); padding-top: 6px; }
+  .kwrow .plist { flex: 1; }
+  .kwrow a.phrase { font-size: 13px; padding: 4px 10px; }
+  ul.tips { margin: 0; padding-left: 18px; } ul.tips li { margin: 4px 0; font-size: 14px; }
+  .note { color: var(--muted); font-size: 13.5px; margin-top: 28px; }
+  .note b { color: var(--ink); }
+  .empty { color: var(--muted); padding: 8px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Post Finder</h1>
+  <p class="sub">Find the newest posts on X (Twitter), Reddit, Facebook and Bluesky for your keywords. Every link opens the newest results first.</p>
+
+  <div class="card">
+    <div class="chips" id="chips"></div>
+    <form class="add" id="addForm">
+      <input type="text" id="kwInput" placeholder="Add a keyword, e.g. character designer" autocomplete="off">
+      <button class="btn" type="submit">Add</button>
+    </form>
+    <details class="sugg" open>
+      <summary>More keywords clients use (click to add)</summary>
+      <div id="sugg"></div>
+    </details>
+    <div class="opts">
+      <label><input type="checkbox" id="hiring" checked> Only posts where someone is <b>hiring / looking for</b> this</label>
+      <label><input type="checkbox" id="real" checked> <span><b>Real paid jobs only</b>: hide unpaid, “rev share”, “for exposure”, bots, scams and rage-bait</span></label>
+    </div>
+    <div class="dates">
+      <label>From <input type="date" id="from"></label>
+      <label>To <input type="date" id="to"></label>
+      <div class="quick">
+        <button type="button" data-days="0">Today</button>
+        <button type="button" data-days="2">Last 3 days</button>
+        <button type="button" data-days="6">Last 7 days</button>
+        <button type="button" data-days="29">Last 30 days</button>
+      </div>
+      <p class="datenote" id="dateNote"></p>
+    </div>
+  </div>
+
+  <h2>Market report: what clients need most <span class="upd" id="mkUpd"></span></h2>
+  <div class="card" id="market">
+    <div class="empty" id="mkMsg">Loading the market report…</div>
+    <div id="mkBody" hidden>
+      <p class="mksum" id="mkSum"></p>
+      <div id="mkNiches"></div>
+      <div class="trsec"><h3>What this means for you</h3><ul class="tips" id="mkTips"></ul></div>
+    </div>
+  </div>
+
+  <h2>Trending now <span class="upd" id="trUpd"></span></h2>
+  <div class="card" id="trending">
+    <div class="empty" id="trMsg">Loading what clients are posting…</div>
+    <div id="trBody" hidden>
+      <div class="trsec">
+        <h3>Gig types clients are asking for most <small>click to add as a keyword</small></h3>
+        <div class="row" id="trRoles"></div>
+      </div>
+      <div class="trsec">
+        <h3>Phrases clients are using right now</h3>
+        <table id="trPhrases"></table>
+      </div>
+      <div class="trsec">
+        <h3>Recent client posts found</h3>
+        <ul class="posts" id="trPosts"></ul>
+      </div>
+    </div>
+  </div>
+
+  <h2>Find clients: ready-made searches</h2>
+  <div class="card">
+    <p class="hint">These are phrases people use when they want to <b>hire</b> someone. Pick a site, then click a phrase. It opens that site with the newest posts first. Posts from artists advertising themselves (“commissions open”, “for hire”) are filtered out. With <b>Real paid jobs only</b> on, X results must mention pay, a budget, a rate, email/DM or a portfolio, and Reddit searches only hiring subreddits (they require a budget in hiring posts).</p>
+    <div class="tabs" id="tabs">
+      <button type="button" data-p="x" class="on" style="--c:var(--x)">X / Twitter</button>
+      <button type="button" data-p="reddit" style="--c:var(--reddit)">Reddit</button>
+      <button type="button" data-p="fb" style="--c:var(--fb)">Facebook</button>
+      <button type="button" data-p="bsky" style="--c:var(--bsky)">Bluesky</button>
+    </div>
+    <div id="phrases"></div>
+  </div>
+
+  <h2>Search all keywords at once</h2>
+  <div class="big" id="big"></div>
+
+  <h2>One keyword at a time</h2>
+  <div class="card"><table id="rows"></table></div>
+
+  <h2>Reddit communities where people hire</h2>
+  <div class="subs" id="subs"></div>
+
+  <p class="note"><b>Why links and not a live feed?</b> X, Facebook and Bluesky don't let outside tools search their posts without a paid or approved developer account, and Reddit blocks unsigned requests. These links open each site's own search, sorted by newest, in your browser where you're already signed in. Your keywords are remembered in this browser.</p>
+</main>
+
+<script id="site-data" type="application/json">{"market":{"updatedAt":"2026-11-21T07:00:00+05:00","period":"November 2026","summary":"Based on Upwork's 2026 in-demand skills report, art and book marketplaces, and job boards for November 2026. Websites, logos and video are where most clients are. VTuber work and book illustration are strong niches. More and more clients ask for \"no AI\". Each keyword opens that site's newest posts.","niches":[{"name":"Websites & landing pages","level":"high","why":"Full-stack, web design and front-end are Upwork's most-hired coding skills in 2026. Job boards this month are full of redesigns, WordPress and online-shop builds.","source":{"title":"Upwork in-demand skills 2026","url":"https://www.upwork.com/resources/in-demand-jobs-and-skills"},"keywords":{"x":["\"need a website\" (business OR shop OR store)","\"looking for a web developer\"","\"shopify developer\" (need OR looking OR hiring)","\"landing page\" (need OR hiring) designer"],"reddit":["title:hiring website","title:hiring shopify","title:hiring wordpress","\"landing page\" hiring"],"facebook":["need a website for my business","looking for web developer","shopify expert needed","wordpress developer needed"],"bluesky":["\"need a website\"","\"looking for a web developer\"","\"web designer\" recommend"]}},{"name":"Logos & graphic design","level":"high","why":"Graphic design is #1 in Upwork's design category, and logo design work grew about 44% in a year. Thumbnails and flyers are steady small jobs.","source":{"title":"Upwork in-demand skills 2026","url":"https://www.upwork.com/resources/in-demand-jobs-and-skills"},"keywords":{"x":["\"need a logo\"","\"looking for a logo designer\"","\"graphic designer\" (hiring OR \"looking for\")","\"thumbnail designer\" (need OR looking)"],"reddit":["title:hiring logo","title:hiring \"graphic designer\"","title:hiring thumbnail"],"facebook":["need a logo for my business","looking for graphic designer","flyer design needed"],"bluesky":["\"need a logo\"","\"looking for a graphic designer\"","\"logo designer\""]}},{"name":"Animation, explainers & motion graphics","level":"rising","why":"Video production jumped from 7th to 4th in Upwork's creative skills. Clients want explainer videos, animated logos and YouTube animation. Some roles combine motion design with web skills.","source":{"title":"Upwork in-demand skills 2026","url":"https://www.upwork.com/resources/in-demand-jobs-and-skills"},"keywords":{"x":["\"looking for an animator\"","\"explainer video\" (need OR looking OR hiring)","\"motion graphics\" (hiring OR \"looking for\")","\"animated logo\" need"],"reddit":["title:hiring animator","title:hiring \"motion graphics\"","title:hiring \"explainer video\"","title:paid animation"],"facebook":["looking for animator for youtube","need explainer video","motion graphics designer needed"],"bluesky":["\"looking for an animator\"","\"motion designer\" hiring","\"explainer video\""]}},{"name":"VTuber models, Live2D rigging & emotes","level":"high","why":"A busy niche. Model art and rigging are often bought separately, so you can sell art without rigging. Emote packs go for about $100–250 and rigged models for $300–1,500 or more.","source":{"title":"artbase: VTuber commissions guide","url":"https://blog.artbase.au/blog/vtuber-art-commissions-guide/"},"keywords":{"x":["\"looking for a live2d rigger\"","\"vtuber model\" (commission OR \"looking for\")","\"need emotes\" OR \"looking for an emote artist\"","\"vtuber artist\" looking"],"reddit":["title:hiring vtuber","title:hiring live2d","title:hiring emotes"],"facebook":["looking for vtuber artist","live2d rigger needed","twitch emotes commission"],"bluesky":["\"looking for a rigger\"","\"vtuber model\" commission","\"need emotes\"","#VTuber looking for artist"]}},{"name":"Book illustration & covers","level":"rising","why":"Self-published authors hire their own illustrators. Reedsy saw almost 4 times more cover requests asking for \"no AI\" in 2026 than in 2025, which works in a human artist's favour.","source":{"title":"Reedsy: 2026 book cover trends","url":"https://reedsy.com/blog/book-cover-trends/"},"keywords":{"x":["\"children's book illustrator\" (looking OR need OR hiring)","\"book cover artist\" (looking OR need)","\"illustrator for my book\""],"reddit":["title:hiring \"book cover\"","title:hiring \"children's book\"","title:hiring illustrator"],"facebook":["looking for children's book illustrator","need book cover designer","illustrator for my book"],"bluesky":["\"illustrator for my book\"","\"book cover artist\"","#booksky illustrator"]}},{"name":"Indie game art (pixel art, sprites, 2D)","level":"steady","why":"Indie studios regularly look for pixel artists, 2D animators and background artists. Many offers are small or revenue-share only, so check the pay first.","source":{"title":"Freelancer: pixel art","url":"https://www.freelancer.com/hire/pixel-art"},"keywords":{"x":["\"looking for a pixel artist\"","#gamedev \"looking for an artist\" paid","\"2d artist\" (hiring OR \"looking for\") game"],"reddit":["title:paid pixel","title:paid \"2d artist\"","title:hiring sprite"],"facebook":["looking for pixel artist for game","2d game artist needed"],"bluesky":["\"looking for a pixel artist\"","#gamedev artist wanted","#indiedev hiring artist"]}},{"name":"Character design & custom art","level":"steady","why":"Character sheets, OCs and D&D characters are the classic commission. Buyers pay more for clearly human-made art than for AI images.","source":{"title":"Art market trends 2026","url":"https://impressivemagazine.com/art-market-trends-2026/"},"keywords":{"x":["\"character design\" (commission OR \"looking for\")","\"reference sheet\" commission looking","\"dnd character\" commission"],"reddit":["title:hiring \"character design\"","title:hiring \"reference sheet\"","title:hiring dnd"],"facebook":["looking for character designer","commission dnd character art"],"bluesky":["\"character design\" commission","\"looking for an artist\" oc","\"dnd character\" commission"]}}],"tips":["Write \"100% hand-drawn, no AI\" in your profile and replies. More clients are asking for it.","Websites + animation together is a strong combo: some clients want motion design and front-end in one person.","Adobe stopped selling Animate on March 1, 2026. Learning another tool, like Toon Boom, Spine, Rive or After Effects, matches what clients will ask for.","Watch out for very low budgets ($10 jobs exist) and 'revenue share only' game offers.","Jobs fixing or editing AI images and video grew fast on Upwork (+95% and +329%). That's extra work if you're open to it.","This report covers the month. For what clients posted today and this week, look at 'Trending now' below, which updates every morning."]},"trending":{"updatedAt":"2026-11-21T06:15:00+05:00","roles":[{"name":"2d animator","note":"kids' YouTube videos, short animation series"},{"name":"animator illustrator","note":"brand videos and social content"},{"name":"3d animator","note":"kids' videos, game contracts"},{"name":"illustrator","note":"steady freelance listings"},{"name":"web developer","note":"small presentation pages"}],"phrases":[{"text":"[hiring] web developer"},{"text":"hand-crafted animation no AI"},{"text":"animator for kids youtube channel"},{"text":"looking for an illustrator"}],"posts":[{"date":"2026-11-18","platform":"web","title":"AWN Jobs Roundup, Nov 18: 70 animation and VFX openings worldwide","url":"https://www.awn.com/news/awn-jobs-roundup-november-18-70-animation-and-vfx-openings-worldwide"},{"platform":"web","title":"Freelancer.com: 2D animation jobs (e.g. 10 short hand-made animations; kids' YouTube videos)","url":"https://www.freelancer.com/jobs/2d-animation/"},{"platform":"web","title":"Freelancer.com: illustration jobs","url":"https://www.freelancer.com/jobs/illustration"}]}}</script>
+<script>
+const DEFAULTS = ["artist", "illustrator", "animator", "character designer", "concept artist",
+  "2D animator", "web developer", "website designer"];
+const SUGGESTIONS = {
+  "Art & illustration": ["character designer", "concept artist", "comic artist", "manga artist",
+    "children's book illustrator", "book cover artist", "VTuber artist", "Live2D rigger", "pixel artist",
+    "3D artist", "3D modeler", "logo designer", "graphic designer", "tattoo designer", "emote artist",
+    "album cover artist", "NFT artist", "portrait artist"],
+  "Animation": ["2D animator", "3D animator", "motion graphics designer", "storyboard artist",
+    "explainer video animator", "Live2D animator", "character animator", "frame by frame animator",
+    "animated logo", "video editor"],
+  "Web & apps": ["website developer", "website designer", "frontend developer", "full stack developer",
+    "WordPress developer", "Shopify developer", "Webflow developer", "landing page designer",
+    "UI/UX designer", "app developer", "React developer"],
+};
+const HIRING_WORDS = ["hiring", "looking for", "need", "commission", "paid"];
+const SUBREDDITS = [
+  ["HungryArtists", "art commissions"], ["artcommissions", "art commissions"],
+  ["hireanartist", "art jobs"], ["forhire", "all freelance"],
+  ["freelance_forhire", "all freelance"], ["gameDevClassifieds", "game art & dev"],
+  ["DesignJobs", "design"], ["animationjobs", "animation"], ["jobbit", "jobs"]
+];
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+let keywords = store.get("pf.keywords.v2", DEFAULTS);
+const $ = id => document.getElementById(id);
+$("hiring").checked = store.get("pf.hiring", true);
+$("real").checked = store.get("pf.real", true);
+// ---- quality filters: keep real paid client posts, drop time-pass / bots / rage-bait ----
+const HIRE_SUBS = "HungryArtists+forhire+hireanartist+artcommissions+gameDevClassifieds+DesignJobs+freelance_forhire+starvingartists+commissions+VTuberCommissions+animationjobs+jobbit";
+const X_BASE = ' -"commissions open" -"open for commissions" -"for hire" -filter:retweets';
+const X_REAL = ' (paid OR budget OR pay OR rate OR rates OR "dm me" OR email OR portfolio)' +
+  ' -unpaid -"for exposure" -"rev share" -revshare -"for free" -"free art" -giveaway -"link in bio"' +
+  ' -telegram -whatsapp -crypto -airdrop -"unpopular opinion" -"hot take" -ratio -filter:replies lang:en';
+const REDDIT_REAL = ' NOT "for hire" NOT unpaid NOT revshare NOT "rev share" NOT exposure nsfw:no';
+const isReal = () => $("real").checked;
+const xTail = () => X_BASE + (isReal() ? X_REAL : "") + dateTerms();
+const redditSearch = q => isReal()
+  ? `https://www.reddit.com/r/${HIRE_SUBS}/search/?q=${enc(q + REDDIT_REAL)}&restrict_sr=1&sort=new&t=${redditT()}`
+  : `https://www.reddit.com/search/?q=${enc(q)}&sort=new&t=${redditT()}`;
+const fbTail = () => isReal() ? " paid" : "";
+const pad = n => String(n).padStart(2, "0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const REDDIT_LABEL = { day: "last 24 hours", week: "last week", month: "last month", year: "last year", all: "any time" };
+function setRange(days) {
+  const t = new Date(), f = new Date();
+  f.setDate(t.getDate() - days);
+  $("from").value = ymd(f); $("to").value = ymd(t);
+}
+setRange(0); // start on today's date
+function dateTerms() {
+  let s = "";
+  const f = $("from").value, t = $("to").value;
+  if (f) s += " since:" + f;
+  if (t) { const d = new Date(t + "T00:00:00"); d.setDate(d.getDate() + 1); s += " until:" + ymd(d); }
+  return s;
+}
+function bskyDates() {
+  let s = "";
+  if ($("from").value) s += " since:" + $("from").value;
+  if ($("to").value) { const d = new Date($("to").value + "T00:00:00"); d.setDate(d.getDate() + 1); s += " until:" + ymd(d); }
+  return s;
+}
+function redditT() {
+  const f = $("from").value;
+  if (!f) return "all";
+  const days = (Date.now() - new Date(f + "T00:00:00")) / 864e5;
+  return days <= 1 ? "day" : days <= 7 ? "week" : days <= 31 ? "month" : days <= 365 ? "year" : "all";
+}
+
+const q = s => s.includes(" ") ? `"${s}"` : s;
+const orGroup = list => list.length === 1 ? q(list[0]) : "(" + list.map(q).join(" OR ") + ")";
+
+function buildQuery(list) {
+  let s = orGroup(list);
+  if ($("hiring").checked) s += " " + orGroup(HIRING_WORDS);
+  return s;
+}
+
+const enc = encodeURIComponent;
+const urls = {
+  x: list => `https://x.com/search?q=${enc(buildQuery(list) + xTail())}&f=live`,
+  reddit: list => redditSearch(buildQuery(list)),
+  bsky: list => `https://bsky.app/search?q=${enc(($("hiring").checked ? "\"looking for\" " : "") + q(list[0]) + bskyDates())}`,
+  fb: list => `https://www.facebook.com/search/posts/?q=${enc(
+      ($("hiring").checked ? "looking for " : "") + list.join(" ") + fbTail())}`,
+};
+
+function link(cls, color, href, html) {
+  const a = document.createElement("a");
+  a.className = cls; a.href = href; a.target = "_blank"; a.rel = "noopener";
+  a.style.setProperty("--c", `var(--${color})`);
+  a.innerHTML = html;
+  return a;
+}
+
+function esc(s) { return s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+function render() {
+  store.set("pf.keywords.v2", keywords);
+  store.set("pf.hiring", $("hiring").checked);
+  store.set("pf.real", $("real").checked);
+  if ($("from").value && $("to").value && $("from").value > $("to").value) {
+    [$("from").value, $("to").value] = [$("to").value, $("from").value];
+  }
+  const today = ymd(new Date());
+  document.querySelectorAll(".quick button").forEach(b => {
+    const f = new Date(); f.setDate(f.getDate() - +b.dataset.days);
+    b.classList.toggle("on", $("to").value === today && $("from").value === ymd(f));
+  });
+  $("dateNote").textContent = `X uses your exact dates. Reddit can only show the closest option: ${REDDIT_LABEL[redditT()]}. Facebook links can't carry dates, so use the “Date posted” filter on Facebook's left side.`;
+
+  const chips = $("chips"); chips.innerHTML = "";
+  keywords.forEach((k, i) => {
+    const c = document.createElement("span"); c.className = "chip";
+    c.innerHTML = `${esc(k)}<button type="button" title="Remove" aria-label="Remove ${esc(k)}">×</button>`;
+    c.querySelector("button").onclick = () => { keywords.splice(i, 1); render(); };
+    chips.appendChild(c);
+  });
+
+  const sugg = $("sugg"); sugg.innerHTML = "";
+  const have = new Set(keywords.map(k => k.toLowerCase()));
+  Object.entries(SUGGESTIONS).forEach(([cat, list]) => {
+    const d = document.createElement("div"); d.className = "scat";
+    d.innerHTML = `<b>${esc(cat)}</b><div class="row"></div>`;
+    list.forEach(w => {
+      const b = document.createElement("button"); b.type = "button";
+      const on = have.has(w.toLowerCase());
+      b.textContent = on ? "✓ " + w : "+ " + w;
+      if (on) b.classList.add("added");
+      else b.onclick = () => { keywords.push(w); render(); };
+      d.lastChild.appendChild(b);
+    });
+    sugg.appendChild(d);
+  });
+
+  const big = $("big"); big.innerHTML = "";
+  const rows = $("rows"); rows.innerHTML = "";
+  if (!keywords.length) {
+    big.innerHTML = `<div class="empty">Add a keyword above to get started.</div>`;
+    rows.innerHTML = `<tr><td class="empty">No keywords yet.</td></tr>`;
+  } else {
+    big.append(
+      link("plat", "x", urls.x(keywords), `<b>X / Twitter</b><span>Latest posts, all keywords</span>`),
+      link("plat", "reddit", urls.reddit(keywords), `<b>Reddit</b><span>Newest posts, all keywords</span>`),
+      link("plat", "fb", urls.fb([keywords[0]]),
+        `<b>Facebook</b><span>Posts for “${esc(keywords[0])}” (one keyword at a time)</span>`),
+      link("plat", "bsky", urls.bsky([keywords[0]]),
+        `<b>Bluesky</b><span>Posts for “${esc(keywords[0])}” (one keyword at a time)</span>`)
+    );
+
+    keywords.forEach(k => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="kw">${esc(k)}</td><td class="links"></td>`;
+      tr.lastChild.append(
+        link("pill", "x", urls.x([k]), "X"),
+        link("pill", "reddit", urls.reddit([k]), "Reddit"),
+        link("pill", "fb", urls.fb([k]), "Facebook"),
+        link("pill", "bsky", urls.bsky([k]), "Bluesky")
+      );
+      rows.appendChild(tr);
+    });
+  }
+
+  renderPhrases();
+  renderTrending();
+  renderMarket();
+
+  const subs = $("subs"); subs.innerHTML = "";
+  const multi = SUBREDDITS.map(s => s[0]).join("+");
+  if (keywords.length) {
+    subs.appendChild(link("", "reddit",
+      `https://www.reddit.com/r/${multi}/search/?q=${enc(orGroup(keywords))}&restrict_sr=1&sort=new&t=${redditT()}`,
+      `<b>Search all of these for your keywords</b>`));
+  }
+  SUBREDDITS.forEach(([name, tag]) => {
+    subs.appendChild(link("", "reddit", `https://www.reddit.com/r/${name}/new/`,
+      `r/${name} <small>· ${tag}</small>`));
+  });
+}
+
+// ---- ready-made client searches ----
+const ROLE = { illustration: "illustrator", illustrations: "illustrator", animation: "animator",
+  art: "artist", "web development": "web developer", "graphic design": "graphic designer", design: "designer" };
+const role = k => ROLE[k.toLowerCase()] || k;
+const an = r => (/^(ui|ux|uni|use|eu|one)/i.test(r) ? "a " : /^([aeiou]|3d|nft)/i.test(r) ? "an " : "a ") + r;
+const TEMPLATES = {
+  x: r => [
+    { label: `looking for ${an(r)}`, q: `"looking for ${an(r)}"` },
+    { label: `hiring ${an(r)}`, q: `"hiring ${an(r)}"` },
+    { label: `need ${an(r)}`, q: `"need ${an(r)}"` },
+    { label: `${r} needed`, q: `"${r} needed"` },
+    { label: `${r} wanted`, q: `"${r} wanted"` },
+    { label: `can recommend ${an(r)}`, q: `"recommend ${an(r)}"` },
+    { label: `want to commission + ${r}`, q: `("looking to commission" OR "want to commission" OR "commissioning") "${r}"` },
+    { label: `${r} + send portfolio`, q: `"${r}" ("send your portfolio" OR "dm your portfolio" OR "drop your portfolio" OR "show me your work")` },
+    { label: `paid ${r} job`, q: `"${r}" (paid OR budget OR "will pay") (job OR gig OR project)` },
+    { label: `freelance ${r}`, q: `"freelance ${r}" (need OR looking OR hiring)` },
+  ],
+  reddit: r => [
+    { label: `[Hiring] in title + ${r}`, q: `title:hiring ${r}` },
+    { label: `Hiring tag + ${r}`, q: `flair:hiring ${r}` },
+    { label: `looking for ${an(r)}`, q: `"looking for ${an(r)}"` },
+    { label: `need ${an(r)}`, q: `"need ${an(r)}"` },
+    { label: `${r} needed`, q: `"${r} needed"` },
+    { label: `paying for ${an(r)}`, q: `"${r}" (paying OR budget OR paid)` },
+    { label: `want to commission + ${r}`, q: `commission "${r}" (looking OR want)` },
+  ],
+  fb: r => [
+    { label: `looking for ${an(r)}`, q: `looking for ${an(r)}` },
+    { label: `need ${an(r)}`, q: `need ${an(r)}` },
+    { label: `hiring ${an(r)}`, q: `hiring ${an(r)}` },
+    { label: `${r} needed`, q: `${r} needed` },
+    { label: `recommend ${an(r)}`, q: `recommend ${an(r)}` },
+    { label: `freelance ${r}`, q: `freelance ${r} needed` },
+    { label: `${r} for my project`, q: `${r} for my project` },
+    { label: `urgently need ${an(r)}`, q: `urgently need ${an(r)}` },
+  ],
+};
+TEMPLATES.bsky = r => [
+  { label: `looking for ${an(r)}`, q: `"looking for ${an(r)}"` },
+  { label: `need ${an(r)}`, q: `"need ${an(r)}"` },
+  { label: `hiring ${an(r)}`, q: `"hiring ${an(r)}"` },
+  { label: `${r} wanted`, q: `"${r} wanted"` },
+  { label: `can recommend ${an(r)}`, q: `"recommend ${an(r)}"` },
+  { label: `want to commission + ${r}`, q: `commission "${r}"` },
+  { label: `paid ${r}`, q: `paid "${r}"` },
+];
+const PHRASE_URL = {
+  bsky: q => `https://bsky.app/search?q=${enc(q + bskyDates())}`,
+  x: q => `https://x.com/search?q=${enc(q + xTail())}&f=live`,
+  reddit: q => redditSearch(q),
+  fb: q => `https://www.facebook.com/search/posts/?q=${enc(q + fbTail())}`,
+};
+let platform = store.get("pf.platform", "x");
+function renderPhrases() {
+  store.set("pf.platform", platform);
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.p === platform));
+  const box = $("phrases"); box.innerHTML = "";
+  if (!keywords.length) { box.innerHTML = '<div class="empty">Add a keyword above to get phrases.</div>'; return; }
+  const seen = new Set();
+  keywords.forEach(k => {
+    const r = role(k);
+    if (seen.has(r.toLowerCase())) return; seen.add(r.toLowerCase());
+    const g = document.createElement("div"); g.className = "group";
+    g.innerHTML = `<h3>${esc(r.charAt(0).toUpperCase() + r.slice(1))}</h3><div class="plist"></div>`;
+    TEMPLATES[platform](r).forEach(t =>
+      g.lastChild.appendChild(link("phrase", platform, PHRASE_URL[platform](t.q), esc(t.label))));
+    box.appendChild(g);
+  });
+}
+document.querySelectorAll("#tabs button").forEach(b =>
+  b.addEventListener("click", () => { platform = b.dataset.p; renderPhrases(); }));
+
+// ---- trending (filled once a day by a Claude scheduled task) ----
+let trending = null;
+const PCOLOR = { reddit: "reddit", x: "x", twitter: "x", facebook: "fb", fb: "fb", bluesky: "bsky", bsky: "bsky" };
+const safeUrl = u => { try { const p = new URL(u); return p.protocol === "https:" ? p.href : null; } catch { return null; } };
+function renderTrending() {
+  if (!trending) return;
+  const t = trending;
+  $("trMsg").hidden = true; $("trBody").hidden = false;
+  if (t.updatedAt) {
+    const d = new Date(t.updatedAt);
+    $("trUpd").textContent = isNaN(d) ? "" : "· updated " + d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+  }
+  const have = new Set(keywords.map(k => k.toLowerCase()));
+  const roles = $("trRoles"); roles.innerHTML = "";
+  (Array.isArray(t.roles) ? t.roles : []).slice(0, 20).forEach(r => {
+    if (!r || typeof r.name !== "string") return;
+    const b = document.createElement("button"); b.type = "button"; b.className = "trole";
+    const on = have.has(r.name.toLowerCase());
+    b.innerHTML = (on ? "✓ " : "+ ") + esc(r.name) + (typeof r.note === "string" && r.note ? `<small>${esc(r.note)}</small>` : "");
+    if (on) b.classList.add("added"); else b.onclick = () => { keywords.push(r.name); render(); };
+    roles.appendChild(b);
+  });
+  if (!roles.children.length) roles.innerHTML = '<div class="empty">None in this update.</div>';
+  const ph = $("trPhrases"); ph.innerHTML = "";
+  (Array.isArray(t.phrases) ? t.phrases : []).slice(0, 20).forEach(p => {
+    const text = typeof p === "string" ? p : p && p.text;
+    if (typeof text !== "string" || !text.trim()) return;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="kw">“${esc(text)}”</td><td class="links"></td>`;
+    const q = `"${text.replace(/"/g, "")}"`;
+    tr.lastChild.append(
+      link("pill", "x", PHRASE_URL.x(q), "X"),
+      link("pill", "reddit", PHRASE_URL.reddit(q), "Reddit"),
+      link("pill", "fb", PHRASE_URL.fb(text), "Facebook"),
+      link("pill", "bsky", PHRASE_URL.bsky(q), "Bluesky"));
+    ph.appendChild(tr);
+  });
+  if (!ph.children.length) ph.innerHTML = '<tr><td class="empty">None in this update.</td></tr>';
+  const posts = $("trPosts"); posts.innerHTML = "";
+  (Array.isArray(t.posts) ? t.posts : []).slice(0, 25).forEach(p => {
+    const url = p && safeUrl(p.url);
+    if (!url || typeof p.title !== "string") return;
+    const li = document.createElement("li");
+    const plat = String(p.platform || "").toLowerCase();
+    li.innerHTML = `<span class="badge" style="--c:var(--${PCOLOR[plat] || "muted"})">${esc(plat || "web")}</span>`;
+    const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = p.title;
+    li.appendChild(a);
+    if (typeof p.date === "string") { const d = document.createElement("span"); d.className = "pdate"; d.textContent = p.date; li.appendChild(d); }
+    posts.appendChild(li);
+  });
+  if (!posts.children.length) posts.innerHTML = '<li class="empty">None in this update.</li>';
+}
+let market = null;
+const MK_PLAT = [["x", "X", "x"], ["reddit", "Reddit", "reddit"], ["facebook", "Facebook", "fb"], ["bluesky", "Bluesky", "bsky"]];
+function renderMarket() {
+  if (!market) return;
+  const m = market;
+  $("mkMsg").hidden = true; $("mkBody").hidden = false;
+  $("mkUpd").textContent = typeof m.period === "string" ? "· " + m.period : "";
+  $("mkSum").textContent = typeof m.summary === "string" ? m.summary : "";
+  const box = $("mkNiches"); box.innerHTML = "";
+  (Array.isArray(m.niches) ? m.niches : []).slice(0, 12).forEach(n => {
+    if (!n || typeof n.name !== "string") return;
+    const d = document.createElement("div"); d.className = "niche";
+    const lvl = ["high", "rising", "steady"].includes(n.level) ? n.level : "steady";
+    const label = { high: "High demand", rising: "Rising", steady: "Steady" }[lvl];
+    d.innerHTML = `<div class="niche-head"><h3>${esc(n.name)}</h3><span class="lvl ${lvl}">${label}</span></div>`;
+    const why = document.createElement("p"); why.className = "why";
+    why.textContent = typeof n.why === "string" ? n.why + " " : "";
+    const src = n.source && safeUrl(n.source.url);
+    if (src) { const a = document.createElement("a"); a.href = src; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Source: " + (n.source.title || "link"); why.appendChild(a); }
+    d.appendChild(why);
+    const kw = n.keywords || {};
+    MK_PLAT.forEach(([key, name, color]) => {
+      const list = Array.isArray(kw[key]) ? kw[key].filter(v => typeof v === "string" && v.trim()).slice(0, 8) : [];
+      if (!list.length) return;
+      const row = document.createElement("div"); row.className = "kwrow";
+      row.innerHTML = `<span class="plab" style="--c:var(--${color})">${name}</span><div class="plist"></div>`;
+      const urlFor = color === "fb" ? PHRASE_URL.fb : PHRASE_URL[color];
+      list.forEach(qv => row.lastChild.appendChild(link("phrase", color, urlFor(qv), esc(qv))));
+      d.appendChild(row);
+    });
+    box.appendChild(d);
+  });
+  const tips = $("mkTips"); tips.innerHTML = "";
+  (Array.isArray(m.tips) ? m.tips : []).slice(0, 10).forEach(t => {
+    if (typeof t !== "string") return;
+    const li = document.createElement("li"); li.textContent = t; tips.appendChild(li);
+  });
+  tips.parentElement.hidden = !tips.children.length;
+}
+
+// ---- site data: built-in copy, replaced by data.json when the site is online ----
+function applyData(d) {
+  if (d && d.market) { market = d.market; renderMarket(); } else $("mkMsg").textContent = "No market report yet.";
+  if (d && d.trending) { trending = d.trending; renderTrending(); } else $("trMsg").textContent = "No trending list yet.";
+}
+let builtIn = null;
+try { builtIn = JSON.parse(document.getElementById("site-data").textContent); } catch {}
+applyData(builtIn);
+fetch("data.json", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => { if (d) applyData(d); }).catch(() => {});
+
+$("addForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = $("kwInput").value.trim().replace(/\s+/g, " ");
+  if (v && !keywords.some(k => k.toLowerCase() === v.toLowerCase())) keywords.push(v);
+  $("kwInput").value = ""; render();
+});
+$("hiring").addEventListener("change", render);
+$("real").addEventListener("change", render);
+$("from").addEventListener("change", render);
+$("to").addEventListener("change", render);
+document.querySelectorAll(".quick button").forEach(b =>
+  b.addEventListener("click", () => { setRange(+b.dataset.days); render(); }));
+render();
+</script>
+</body>
+</html>
