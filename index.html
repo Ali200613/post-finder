@@ -432,6 +432,8 @@ const TEMPLATES = {
     { label: `${r} + portfolio / DM`, q: `"${r}" (portfolio OR "dm me" OR "send your work")` },
     { label: `can recommend ${an(r)}`, q: `"${r}" (recommend OR recommendations OR "anyone know")` },
     { label: `freelance ${r}`, q: `"freelance ${r}" (need OR looking OR hiring)` },
+    { label: `${r} + "drop / show me your work"`, q: `"${r}" ("drop your" OR "show me your" OR "reply with your" OR "quote this with" OR qrt)` },
+    { label: `${r} + misspelled "comission"`, q: `"${r}" (comission OR commision OR comissions OR commisions OR c0mmission)` },
   ],
   reddit: r => [
     { label: `hiring + ${r}`, q: `hiring ${r}` },
@@ -468,12 +470,28 @@ const PHRASE_URL = {
   reddit: q => redditSearch(q),
   fb: q => `https://www.facebook.com/search/posts/?q=${enc(q + fbTail())}`,
 };
+// Clients who dodge bots skip the word "hiring" and write things like "drop your portfolio" or "who's taking commissions?"
+const CLEVER = [
+  { label: "“drop / show me your art”", q: `("drop your art" OR "drop your portfolio" OR "show me your art" OR "show me your work" OR "reply with your art" OR "qrt with your art" OR "quote this with your art")` },
+  { label: "“who's taking commissions?”", q: `("who's taking commissions" OR "anyone taking commissions" OR "anyone open for commissions" OR "who's open for commissions" OR "any artists open")` },
+  { label: "“I want to commission someone”", q: `("i want to commission" OR "i wanna commission" OR "looking to commission" OR "trying to commission" OR "want to commission someone")` },
+  { label: "“my budget is…”", q: `("my budget is" OR "budget is" OR "i'm paying" OR "will pay") (art OR artist OR drawing OR animation OR website OR logo)` },
+  { label: "“real / human artist, no AI”", q: `("no ai" OR "human artist" OR "real artist" OR "not ai") (commission OR hiring OR "looking for" OR paying)` },
+  { label: "misspelled “comission”", q: `(comission OR commision OR comissions OR commisions OR c0mmission) (looking OR want OR need OR anyone)` },
+];
+function cleverGroup() {
+  const g = document.createElement("div"); g.className = "group";
+  g.innerHTML = `<h3>Clever client posts <small style="color:var(--muted);font-weight:400">written to dodge bots, often without the word “hiring”</small></h3><div class="plist"></div>`;
+  CLEVER.forEach(t => g.lastChild.appendChild(link("phrase", "x", PHRASE_URL.x(t.q), t.label)));
+  return g;
+}
 let platform = store.get("pf.platform", "x");
 function renderPhrases() {
   store.set("pf.platform", platform);
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.p === platform));
   const box = $("phrases"); box.innerHTML = "";
   if (!keywords.length) { box.innerHTML = '<div class="empty">Add a keyword above to get phrases.</div>'; return; }
+  if (platform === "x") box.appendChild(cleverGroup());
   const seen = new Set();
   keywords.forEach(k => {
     const r = role(k);
