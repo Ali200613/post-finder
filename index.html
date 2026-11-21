@@ -160,7 +160,7 @@
     </details>
     <div class="opts">
       <label><input type="checkbox" id="hiring" checked> Only posts where someone is <b>hiring / looking for</b> this</label>
-      <label><input type="checkbox" id="real" checked> <span><b>Real paid jobs only</b>: hide unpaid, “rev share”, “for exposure”, bots, scams and rage-bait</span></label>
+      <label><input type="checkbox" id="real" checked> <span><b>Real paid jobs only</b>: hide ads, unpaid, “rev share”, “for exposure”, bots, scams and rage-bait</span></label>
     </div>
     <div class="dates">
       <label>From <input type="date" id="from"></label>
@@ -206,7 +206,7 @@
 
   <h2>Find clients: ready-made searches</h2>
   <div class="card">
-    <p class="hint">These are phrases people use when they want to <b>hire</b> someone. Pick a site, then click a phrase. It opens that site with the newest posts first. Posts from artists advertising themselves (“commissions open”, “for hire”) are filtered out. With <b>Real paid jobs only</b> on, X results must mention pay, a budget, a rate, email/DM or a portfolio, and Reddit searches only hiring subreddits (they require a budget in hiring posts).</p>
+    <p class="hint">These are phrases people use when they want to <b>hire</b> someone. Pick a site, then click a phrase. It opens that site with the newest posts first. Posts from sellers advertising themselves (“commissions open”, “for hire”, “looking for clients”, “hire me”, “I offer…”) are filtered out. With <b>Real paid jobs only</b> on, X results must mention pay, a budget, a rate, email/DM or a portfolio, and Reddit searches only hiring subreddits (they require a budget in hiring posts).</p>
     <div class="tabs" id="tabs">
       <button type="button" data-p="x" class="on" style="--c:var(--x)">X / Twitter</button>
       <button type="button" data-p="reddit" style="--c:var(--reddit)">Reddit</button>
@@ -263,11 +263,13 @@ $("hiring").checked = store.get("pf.hiring", true);
 $("real").checked = store.get("pf.real", true);
 // ---- quality filters: keep real paid client posts, drop time-pass / bots / rage-bait ----
 const HIRE_SUBS = "HungryArtists+forhire+hireanartist+artcommissions+gameDevClassifieds+DesignJobs+freelance_forhire+starvingartists+commissions+VTuberCommissions+animationjobs+jobbit";
-const X_BASE = ' -"commissions open" -"open for commissions" -"for hire" -filter:retweets';
-const X_REAL = ' (paid OR budget OR pay OR rate OR rates OR "dm me" OR email OR portfolio)' +
-  ' -unpaid -"for exposure" -"rev share" -revshare -"for free" -"free art" -giveaway -"link in bio"' +
-  ' -telegram -whatsapp -crypto -airdrop -"unpopular opinion" -"hot take" -ratio -filter:replies lang:en';
-const REDDIT_REAL = ' NOT "for hire" NOT unpaid NOT revshare NOT "rev share" NOT exposure nsfw:no';
+const X_BASE = ' -"commissions open" -"for hire" -filter:retweets';
+// junk: unpaid / bots / scams / rage-bait
+const X_JUNK = ' -unpaid -exposure -revshare -"rev share" -"for free" -giveaway -"link in bio" -telegram -whatsapp -crypto -"unpopular opinion"';
+// ads written as "looking for": sellers looking for clients, service promos
+const X_ADS = ' -"looking for clients" -"looking for commissions" -"looking for work" -"open to work" -"hire me" -"commission me" -"my rates" -"i offer" -"we offer" -"our services" -discount -slots';
+const X_REAL = ' (paid OR budget OR pay OR rate OR "dm me" OR email OR portfolio)' + X_JUNK + X_ADS + ' -filter:replies lang:en';
+const REDDIT_REAL = ' NOT "for hire" NOT unpaid NOT revshare NOT exposure NOT "looking for clients" NOT "looking for work" NOT "hire me" NOT "my rates" nsfw:no';
 const isReal = () => $("real").checked;
 const xTail = () => X_BASE + (isReal() ? X_REAL : "") + dateTerms();
 const redditSearch = q => isReal()
