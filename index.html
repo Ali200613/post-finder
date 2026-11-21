@@ -758,13 +758,23 @@ function multiSearches(roles) {
   };
 }
 
-// ---- which gigs clients posted about this week (from the hourly update) ----
+// ---- which gigs clients posted about in the LAST 24 HOURS (from the hourly update) ----
+// Posts carry a day, not a time, so "last 24 hours" = posted today or yesterday.
+function recentPosts() {
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const from = ymd(y);
+  return (trending && Array.isArray(trending.posts) ? trending.posts : [])
+    .filter(p => p && typeof p.date === "string" && /^\d{4}-\d\d-\d\d$/.test(p.date) && p.date >= from);
+}
 function hotMap() {
-  const m = new Map();
+  const m = new Map(), recent = recentPosts();
   (trending && Array.isArray(trending.roles) ? trending.roles : []).forEach(r => {
     if (!r || typeof r.name !== "string") return;
-    let n = Number.isFinite(r.count) ? r.count : parseInt(String(r.note || "").match(/\d+/)?.[0] || "0", 10);
-    m.set(r.name.toLowerCase(), n || 0);
+    const name = r.name.toLowerCase();
+    // count24 from the hourly update if it has it; otherwise count recent posts whose title names the gig.
+    const n = Number.isFinite(r.count24) ? r.count24
+      : recent.filter(p => String(p.title || "").toLowerCase().includes(name)).length;
+    m.set(name, n || 0);
   });
   return m;
 }
@@ -785,7 +795,7 @@ function renderFind() {
   keywords.forEach(k => {
     const b = document.createElement("button"); b.type = "button"; b.className = "gig";
     const n = hotCount(k);
-    b.innerHTML = esc(k) + (n ? ` <span class="hot${n >= 2 ? " big" : ""}" title="${n} client posts this week">${n}</span>` : "");
+    b.innerHTML = esc(k) + (n ? ` <span class="hot${n >= 2 ? " big" : ""}" title="${n} client posts in the last 24 hours">${n}</span>` : "");
     b.setAttribute("aria-pressed", String(selected.includes(k)));
     b.onclick = () => {
       if (!multi) selected = [k];
@@ -795,12 +805,12 @@ function renderFind() {
     };
     gigs.appendChild(b);
   });
-  // gigs with 2+ client posts this week
+  // gigs with 2+ client posts in the last 24 hours
   const hr = $("hotRow"); hr.innerHTML = "";
   const hot = [...hotMap()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 8);
   if (trending) {
     const lab = document.createElement("span"); lab.className = "aclab";
-    lab.textContent = hot.length ? "2+ client posts this week:" : "No gig has 2+ client posts this week yet. The hourly update fills this in.";
+    lab.textContent = hot.length ? "2+ client posts in the last 24 hours:" : "No gig has 2+ client posts in the last 24 hours yet. The hourly update fills this in.";
     hr.appendChild(lab);
     hot.forEach(([name, n]) => {
       const b = document.createElement("button"); b.type = "button";
