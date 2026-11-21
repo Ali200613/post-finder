@@ -467,13 +467,16 @@ function redditT() {
   return d <= 1 ? "day" : d <= 7 ? "week" : d <= 31 ? "month" : d <= 365 ? "year" : "all";
 }
 // Reddit search breaks with many operators, and hiring posts rarely use exact phrases.
-const redditPlain = q => q.replace(/\b(title|flair|self|nsfw):/gi, "").replace(/["()]/g, " ")
+// flair: is kept: hiring subreddits tag client posts with a flair like "Hiring", "Patron" or "Paid".
+const redditPlain = q => q.replace(/\b(title|self|nsfw):/gi, "").replace(/["()]/g, " ")
   .replace(/\b(OR|AND|NOT)\b/g, " ").replace(/\s+/g, " ").trim();
+// Which flair marks a CLIENT post in each subreddit (they differ).
+const SUB_FLAIR = { HungryArtists: "hiring", forhire: "hiring", hireanartist: "hiring", artcommissions: "patron", gameDevClassifieds: "paid", DesignJobs: "hiring", freelance_forhire: "hiring", starvingartists: "hiring", commissions: "patron", VTuberCommissions: "hiring", animationjobs: "hiring", jobbit: "hiring" };
 const URL_FOR = {
   x: q => `https://x.com/search?q=${enc(q + X_BASE + (isReal() ? X_REAL : "") + dateTerms())}&f=live`,
   reddit: q => {
     if (!isReal()) return `https://www.reddit.com/search/?q=${enc(q)}&sort=new&t=${redditT()}`;
-    const p = redditPlain(q), qq = /\bhiring\b/i.test(p) ? p : "hiring " + p;
+    const p = redditPlain(q), qq = /\bhiring\b|\bflair:/i.test(p) ? p : "hiring " + p;
     const t = ["day", "week"].includes(redditT()) ? "month" : redditT();
     return `https://www.reddit.com/r/${HIRE_SUBS.join("+")}/search/?q=${enc(qq)}&restrict_sr=1&sort=new&t=${t}`;
   },
@@ -493,6 +496,9 @@ const TEMPLATES = {
     { label: `${r} + misspelled “comission”`, q: `"${r}" (comission OR commision OR comissions OR commisions OR c0mmission)` },
   ],
   reddit: r => [
+    { label: `“Hiring” flair + ${r}`, q: `flair:hiring ${r}` },
+    { label: `“Patron” flair (buyers) + ${r}`, q: `flair:patron ${r}` },
+    { label: `“Paid” flair + ${r}`, q: `flair:paid ${r}` },
     { label: `hiring ${an(r)}`, q: `hiring ${r}` },
     { label: `paid ${r}`, q: `paid ${r}` },
     { label: `looking for ${an(r)}`, q: `looking for ${r}` },
@@ -556,8 +562,14 @@ function platformCard(p, items, opts = {}) {
   if (opts.note) { const n = document.createElement("p"); n.className = "pnote"; n.textContent = opts.note; card.appendChild(n); }
   if (opts.subs) {
     const d = document.createElement("div"); d.className = "subs";
-    HIRE_SUBS.slice(0, 8).forEach(s => d.appendChild(link("", "reddit", `https://www.reddit.com/r/${s}/new/`, "r/" + s)));
-    card.appendChild(d);
+    // Each chip: that subreddit's newest posts with its client flair only.
+    HIRE_SUBS.forEach(s => {
+      const fl = SUB_FLAIR[s] || "hiring";
+      d.appendChild(link("", "reddit", `https://www.reddit.com/r/${s}/search/?q=${enc("flair:" + fl)}&restrict_sr=1&sort=new`, `r/${s} · ${fl[0].toUpperCase() + fl.slice(1)}`));
+    });
+    const lab = document.createElement("p"); lab.className = "pnote"; lab.style.margin = "0 0 8px";
+    lab.textContent = "Client flair only, per subreddit:";
+    card.appendChild(lab); card.appendChild(d);
   }
   return card;
 }
