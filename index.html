@@ -599,9 +599,13 @@ const gigKind = r => /develop|program|script|coder|wordpress|shopify|webflow|wix
   : /design|ui|ux|logo|brand|thumbnail|flyer|poster|banner|packaging|merch|t-shirt|font|icon|presentation/i.test(r) ? "design" : "art";
 const subsFor = r => {
   const k = gigKind(r), game = /game|unity|unreal|godot|roblox|minecraft|sprite|pixel|level/i.test(r);
+  // Best community first: the game subreddit for game gigs, then the ones made for this kind of gig.
+  const rank = x => (game && x.for === "game" ? 2 : 0) + (x.for.split(" ")[0] === k ? 1 : 0);
   return REDDIT_SUBS.filter(x => x.for.split(" ").includes(k) || (game && x.for === "game"))
-    .sort((a, b) => (b.for.split(" ")[0] === k) - (a.for.split(" ")[0] === k));
+    .sort((a, b) => rank(b) - rank(a));
 };
+// All communities that fit ANY of the picked gigs, best first, no repeats.
+const subsForAll = roles => [...new Set(roles.flatMap(r => subsFor(r)))];
 const subQuery = (x, words) => (x.f ? `flair_name:"${x.f}"` : x.w) + (words ? " " + words : "");
 const subUrl = (x, words) => `https://www.reddit.com/r/${x.s}/search/?q=${enc(subQuery(x, words))}&restrict_sr=1&sort=new&t=${R_T}`;
 const FB_RECENT = btoa(JSON.stringify({ "recent_posts:0": JSON.stringify({ name: "recent_posts", args: "" }) }));
@@ -671,7 +675,7 @@ const CLEVER = [
 const spanText = () => days === 0 ? "your dates" : days === 1 ? "24 h" : days + " days";
 const HINT = {
   x: () => `newest first · ${spanText()}`,
-  reddit: () => isReal() ? "hiring subreddits only" : "all of Reddit",
+  reddit: () => "communities for your gigs",
   fb: () => "recent posts first",
   bsky: () => `newest · ${spanText()}`,
 };
@@ -698,9 +702,9 @@ function platformCard(p, items, opts = {}) {
   if (opts.subs) {
     const d = document.createElement("div"); d.className = "subs";
     // Each chip: that subreddit's newest posts with its client flair only.
-    REDDIT_SUBS.forEach(x => d.appendChild(link("", "reddit", subUrl(x, ""), `r/${x.s} · ${x.f || "[Paid]"}`)));
+    opts.subs.forEach(x => d.appendChild(link("", "reddit", subUrl(x, ""), `r/${x.s} · ${x.f || "[Paid]"}`)));
     const lab = document.createElement("p"); lab.className = "pnote"; lab.style.margin = "0 0 8px";
-    lab.textContent = "Client flair only, per subreddit:";
+    lab.textContent = "All client posts in the communities for your gigs:";
     card.appendChild(lab); card.appendChild(d);
   }
   return card;
@@ -744,12 +748,12 @@ function multiSearches(roles) {
       { label: "can anyone recommend one?", q: `${G} ("anyone know" OR "can anyone recommend" OR "any recommendations")` },
       { label: "any of them + misspelled “comission”", q: `${G} (comission OR commision OR comissions OR c0mmission)` },
     ],
-    // Reddit breaks on long "this OR that" searches, so: each gig in its best subreddit's client flair,
-    // then every client post in each fitting subreddit (all gigs, newest first).
+    // Reddit breaks on long "this OR that" searches, so: every picked gig in EVERY community that fits it
+    // (e.g. game developer → r/gameDevClassifieds and r/forhire), then each community's full client feed.
     reddit: [
-      ...roles.slice(0, 8).map(r => { const x = subsFor(r)[0]; return { label: `r/${x.s} · ${x.f ? x.f + " posts" : "[Paid] posts"} · ${r}`, q: r, opt: x }; }),
-      ...REDDIT_SUBS.filter(x => roles.some(r => subsFor(r).includes(x)))
-        .map(x => ({ label: `r/${x.s} · all ${x.f ? x.f : "[Paid]"} posts`, q: "", opt: x })),
+      ...subsForAll(roles).flatMap(x => roles.filter(r => subsFor(r).includes(x))
+        .map(r => ({ label: `r/${x.s} · ${x.f ? x.f + " posts" : "[Paid] posts"} · ${r}`, q: r, opt: x }))).slice(0, 16),
+      ...subsForAll(roles).map(x => ({ label: `r/${x.s} · all ${x.f ? x.f : "[Paid]"} posts`, q: "", opt: x })),
     ],
     // Facebook and Bluesky can't search "this OR that", so one search per gig.
     fb: roles.slice(0, 10).flatMap(r => [{ label: `looking for ${an(r)}`, q: `looking for ${an(r)}` }, { label: `ISO ${r}`, q: `ISO ${r}` }]),
@@ -844,7 +848,7 @@ function renderFind() {
   }
   box.append(
     platformCard("x", S.x, { note: S.xNote, key: "x" + roles.length }),
-    platformCard("reddit", S.reddit, { subs: true, key: "r" + roles.length }),
+    platformCard("reddit", S.reddit, { subs: subsForAll(roles), key: "r" + roles.join("|") }),
     platformCard("fb", S.fb, { note: "Opens with “Recent posts” on. If Facebook shows old posts, tap “Recent posts” on the left.",key: "f" + roles.length }),
     platformCard("bsky", S.bsky, { key: "b" + roles.length }),
     platformCard("x", CLEVER, { wide: true, key: "clever", title: "Sneaky client posts on X", hint: "clients who dodge bots and skip the word “hiring”" }),
