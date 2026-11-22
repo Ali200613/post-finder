@@ -584,39 +584,62 @@ const redditPlain = q => q.replace(/\b(title|self|nsfw):/gi, "").replace(/["()]/
   .replace(/\b(OR|AND|NOT)\b/g, " ").replace(/\s+/g, " ").trim();
 // Hiring posts on Reddit are few, so look back a week; newest are always at the top.
 const R_T = "week";
-// The flair (tag) each subreddit puts on CLIENT posts. Searching inside that flair = only people paying.
-// gameDevClassifieds has no single client flair: clients write [Paid] in the title, so search the word "paid".
+// Every Reddit community where clients post PAID work, and how to see only the client posts there:
+//   f = the flair (tag) clients' posts get  →  search inside that flair
+//   w = the word client posts use ([Paid], [Task], "looking for")  →  search that word
+// "fits" = which gigs belong there. Listed niche-first: a gig's own small communities come before the big general ones.
+const ART = /artist|illustrat|draw|portrait|character|concept|anime|chibi|furry|pin-up|painter|caricature|cartoon|sticker|emote|badge|map|mural|matte/i;
+const COMIC = /comic|manga|webtoon|storyboard|cartoon|colorist/i;
+const BOOK = /book|cover/i;
+const VT = /vtuber|live2d|emote|twitch|badge|rigger/i;
+const GAME = /game|unity|unreal|godot|sprite|pixel|level|3d|environment|prop|texture|spine|roblox|minecraft/i;
+const VIDEO = /video|editor|youtube|thumbnail|vfx|motion|explainer|lyric|animat/i;
+const DESIGN = /graphic|logo|brand|ui|ux|web designer|website designer|landing|app designer|thumbnail|flyer|poster|banner|packaging|merch|t-shirt|font|icon|presentation|sticker/i;
+const DEV = /develop|program|script|wordpress|shopify|webflow|wix|react|next\.js|python|javascript|frontend|backend|full stack|extension|bot/i;
+const any = (...rx) => ({ test: s => rx.some(x => x.test(s)) });
 const REDDIT_SUBS = [
-  { s: "HungryArtists", f: "Hiring", for: "art" },
-  { s: "artcommissions", f: "Patron", for: "art" },
-  { s: "hireanartist", f: "Hiring", for: "art" },
-  { s: "forhire", f: "Hiring", for: "art design dev" },
-  { s: "DesignJobs", f: "Hiring", for: "design" },
-  { s: "gameDevClassifieds", w: "paid", for: "game" },
+  { s: "vtubers", w: "looking for", fits: VT },
+  { s: "ComicBookCollabs", w: "paid", fits: COMIC },
+  { s: "childrensbooks", w: "looking for", fits: /children|kid|picture book/i },
+  { s: "selfpublish", w: "looking for", fits: BOOK },
+  { s: "robloxgamedev", w: "hiring", fits: /roblox/i },
+  { s: "admincraft", w: "hiring", fits: /minecraft/i },
+  { s: "Discord_Bots", w: "hiring", fits: /discord|bot/i },
+  { s: "TattooDesigns", w: "paid", fits: /tattoo/i },
+  { s: "CreatorServices", f: "Seeking Paid", fits: VIDEO },
+  { s: "FindVideoEditors", w: "hiring", fits: /video|editor|youtube|thumbnail|motion|vfx|explainer|lyric/i },
+  { s: "gameDevClassifieds", w: "paid", fits: GAME },
+  { s: "INAT", w: "paid", fits: GAME },
+  { s: "gameDevJobs", w: "paid", fits: GAME },
+  { s: "RemoteJS", w: "", fits: /react|next\.js|javascript|frontend|full stack|web developer|website developer/i },
+  { s: "DesignJobs", f: "Hiring", fits: DESIGN },
+  { s: "HungryArtists", f: "Hiring", fits: any(ART, COMIC, BOOK, VT, /animat|3d|pixel|sprite/i) },
+  { s: "artcommissions", f: "Patron", fits: any(ART, COMIC, BOOK, VT) },
+  { s: "hireanartist", f: "Hiring", fits: any(ART, COMIC, BOOK, VT, /animat|pixel|sprite/i) },
+  { s: "commissions", w: "looking for", fits: any(ART, VT) },
+  { s: "forhire", f: "Hiring", fits: /./ },
+  { s: "slavelabour", w: "task", fits: any(DESIGN, DEV, /video|editor/i) },
+  { s: "jobbit", w: "hiring", fits: DEV },
 ];
-// Which kind of gig: art, design or dev (to put the right subreddits first).
-const gigKind = r => /develop|program|script|coder|wordpress|shopify|webflow|wix|react|next\.js|python|javascript|bot|extension|full stack|frontend|backend/i.test(r) ? "dev"
-  : /design|ui|ux|logo|brand|thumbnail|flyer|poster|banner|packaging|merch|t-shirt|font|icon|presentation/i.test(r) ? "design" : "art";
-const subsFor = r => {
-  const k = gigKind(r), game = /game|unity|unreal|godot|roblox|minecraft|sprite|pixel|level/i.test(r);
-  // Best community first: the game subreddit for game gigs, then the ones made for this kind of gig.
-  const rank = x => (game && x.for === "game" ? 2 : 0) + (x.for.split(" ")[0] === k ? 1 : 0);
-  return REDDIT_SUBS.filter(x => x.for.split(" ").includes(k) || (game && x.for === "game"))
-    .sort((a, b) => rank(b) - rank(a));
-};
+// A gig's communities: the ones it fits, niche first (list order). A character/concept/game designer is art, not graphic design.
+const subsFor = r => REDDIT_SUBS.filter(x => x.fits.test(r) && !(x.s === "DesignJobs" && /character|concept|game|level/i.test(r)));
 // All communities that fit ANY of the picked gigs, best first, no repeats.
 const subsForAll = roles => [...new Set(roles.flatMap(r => subsFor(r)))];
-const subQuery = (x, words) => (x.f ? `flair_name:"${x.f}"` : x.w) + (words ? " " + words : "");
+// How the client tag shows in labels: Hiring / Patron flair, or the word clients write.
+const tagOf = x => x.f || (x.w === "paid" ? "[Paid]" : x.w === "task" ? "[Task]" : x.w ? "“" + x.w + "”" : "job");
+const subQuery = (x, words) => ((x.f ? `flair_name:"${x.f}"` : x.w) + (words ? " " + words : "")).trim();
 const subUrl = (x, words) => `https://www.reddit.com/r/${x.s}/search/?q=${enc(subQuery(x, words))}&restrict_sr=1&sort=new&t=${R_T}`;
 const FB_RECENT = btoa(JSON.stringify({ "recent_posts:0": JSON.stringify({ name: "recent_posts", args: "" }) }));
 const URL_FOR = {
   x: q => `https://x.com/search?q=${enc(xQuery(q))}&f=live`,
-  // opt = a subreddit from REDDIT_SUBS (search inside its client flair), or true = keep the words as they are.
+  // opt = one community from REDDIT_SUBS (search inside its client posts), or a list of communities
+  // (search the words in all of them at once). No opt = the main hiring communities.
   reddit: (q, opt) => {
-    if (opt && typeof opt === "object") return subUrl(opt, q);
-    const p = opt === true ? q : redditPlain(q);
+    if (opt && !Array.isArray(opt) && typeof opt === "object") return subUrl(opt, q);
+    const list = Array.isArray(opt) && opt.length ? opt : REDDIT_SUBS.filter(x => ["HungryArtists", "artcommissions", "hireanartist", "forhire", "DesignJobs", "gameDevClassifieds"].includes(x.s));
+    const p = Array.isArray(opt) ? q : redditPlain(q);
     if (!isReal()) return `https://www.reddit.com/search/?q=${enc(p)}&sort=new&t=${R_T}`;
-    return `https://www.reddit.com/r/${REDDIT_SUBS.map(x => x.s).join("+")}/search/?q=${enc(p)}&restrict_sr=1&sort=new&t=${R_T}`;
+    return `https://www.reddit.com/r/${list.map(x => x.s).join("+")}/search/?q=${enc(p)}&restrict_sr=1&sort=new&t=${R_T}`;
   },
   // Facebook search can't take dates, but this switches on its "Recent posts" filter (newest first).
   // No extra words added: Facebook search gets worse with every word.
@@ -638,10 +661,10 @@ const TEMPLATES = {
   ],
   // First: each subreddit's own client flair + the gig. Then the plain words clients write in their titles.
   reddit: r => [
-    ...subsFor(r).map(x => ({ label: `r/${x.s} · ${x.f ? x.f + " posts" : "[Paid] posts"} · ${r}`, q: r, opt: x })),
-    { label: `“looking for ${an(r)}”`, q: `"looking for ${an(r)}"`, opt: true },
-    { label: `“need ${an(r)}”`, q: `"need ${an(r)}"`, opt: true },
-    { label: `${r} + budget`, q: `${r} budget`, opt: true },
+    ...subsFor(r).map(x => ({ label: `r/${x.s} · ${tagOf(x)} posts · ${r}`, q: r, opt: x })),
+    { label: `“looking for ${an(r)}”`, q: `"looking for ${an(r)}"`, opt: subsFor(r) },
+    { label: `“need ${an(r)}”`, q: `"need ${an(r)}"`, opt: subsFor(r) },
+    { label: `${r} + budget`, q: `${r} budget`, opt: subsFor(r) },
   ],
   // Facebook group posts: "Looking for...", "ISO" (in search of), "Can anyone recommend...". Short = better on Facebook.
   fb: r => [
@@ -702,7 +725,7 @@ function platformCard(p, items, opts = {}) {
   if (opts.subs) {
     const d = document.createElement("div"); d.className = "subs";
     // Each chip: that subreddit's newest posts with its client flair only.
-    opts.subs.forEach(x => d.appendChild(link("", "reddit", subUrl(x, ""), `r/${x.s} · ${x.f || "[Paid]"}`)));
+    opts.subs.forEach(x => d.appendChild(link("", "reddit", subUrl(x, ""), `r/${x.s} · ${tagOf(x)}`)));
     const lab = document.createElement("p"); lab.className = "pnote"; lab.style.margin = "0 0 8px";
     lab.textContent = "All client posts in the communities for your gigs:";
     card.appendChild(lab); card.appendChild(d);
@@ -752,8 +775,8 @@ function multiSearches(roles) {
     // (e.g. game developer → r/gameDevClassifieds and r/forhire), then each community's full client feed.
     reddit: [
       ...subsForAll(roles).flatMap(x => roles.filter(r => subsFor(r).includes(x))
-        .map(r => ({ label: `r/${x.s} · ${x.f ? x.f + " posts" : "[Paid] posts"} · ${r}`, q: r, opt: x }))).slice(0, 16),
-      ...subsForAll(roles).map(x => ({ label: `r/${x.s} · all ${x.f ? x.f : "[Paid]"} posts`, q: "", opt: x })),
+        .map(r => ({ label: `r/${x.s} · ${tagOf(x)} posts · ${r}`, q: r, opt: x }))).slice(0, 16),
+      ...subsForAll(roles).map(x => ({ label: `r/${x.s} · all ${tagOf(x)} posts`, q: "", opt: x })),
     ],
     // Facebook and Bluesky can't search "this OR that", so one search per gig.
     fb: roles.slice(0, 10).flatMap(r => [{ label: `looking for ${an(r)}`, q: `looking for ${an(r)}` }, { label: `ISO ${r}`, q: `ISO ${r}` }]),
