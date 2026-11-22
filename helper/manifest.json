@@ -1,23 +1,20 @@
 {
   "manifest_version": 3,
   "name": "Post Finder helper",
-  "version": "1.1",
+  "version": "2.0",
   "description": "Post Finder searches open in your pinned Reddit, X, Facebook or Bluesky tab. No pinned tab? One tab per site.",
-  "permissions": ["storage"],
-  "host_permissions": [
-    "*://*.reddit.com/*",
-    "*://*.x.com/*",
-    "*://x.com/*",
-    "*://*.twitter.com/*",
-    "*://*.facebook.com/*",
-    "*://bsky.app/*"
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA756XPtxx7vp/qpIM8L732iX/PcZK7mHCsKlVz/NfMjWkRg4JhICCZ7L5PCqrlp8cKOHmfBLo364X+rig7b8QNjdKWaxFjbsozxTX50l4fhjd9fNV3eK8fELHtPtgIXyCvGlTOl/NLz9Zgeh88bxekc5DvyNh7YeF7GXsIjFzBCUc0P6YqAj9B2SYhuFGfEl8g0zTafPCwRI7kJay/VlqhStsyfiIZWdEUoRHGHpuUa0oOZOU4XNMVVe4Y5A/jZj/IVpDJ8V0BQAulibSlPac805GjYqp6lMXPUaXIZfY79qcEiu8cBBehnAmjt4ZrgTmLNQ7XRHJOHgLuZ8KG24dswIDAQAB",
+  "permissions": [
+    "tabs",
+    "storage"
   ],
-  "background": { "service_worker": "background.js" },
-  "content_scripts": [
-    {
-      "matches": ["https://ali200613.github.io/post-finder/*", "http://localhost:8767/*"],
-      "js": ["content.js"],
-      "run_at": "document_start"
-    }
-  ]
+  "background": {
+    "service_worker": "background.js"
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://ali200613.github.io/*",
+      "http://localhost/*"
+    ]
+  }
 }

@@ -1,16 +1,20 @@
-// Opens a Post Finder search in the right tab:
+// Post Finder helper. The Post Finder page sends it a search link; it opens it in the right tab:
 //   1. your PINNED tab for that site (Reddit, X, Facebook, Bluesky), if you have one
 //   2. else the tab this helper opened for that site last time, if it's still on that site
 //   3. else one new tab next to Post Finder
-// It answers the page with where it opened, so you can see it working.
+// It answers with where it opened, and the page shows that in a small note.
+// Only the Post Finder website can talk to it (see "externally_connectable" in manifest.json).
+const PAGES = ["https://ali200613.github.io", "http://localhost:8767"];
 const SITES = [
-  { key: "reddit", name: "Reddit", host: /(^|\.)reddit\.com$/, tabs: ["*://*.reddit.com/*"] },
-  { key: "x", name: "X", host: /(^|\.)(x|twitter)\.com$/, tabs: ["*://x.com/*", "*://*.x.com/*", "*://*.twitter.com/*"] },
-  { key: "fb", name: "Facebook", host: /(^|\.)facebook\.com$/, tabs: ["*://*.facebook.com/*"] },
-  { key: "bsky", name: "Bluesky", host: /(^|\.)bsky\.app$/, tabs: ["*://bsky.app/*"] },
+  { key: "reddit", name: "Reddit", host: /(^|\.)reddit\.com$/ },
+  { key: "x", name: "X", host: /(^|\.)(x|twitter)\.com$/ },
+  { key: "fb", name: "Facebook", host: /(^|\.)facebook\.com$/ },
+  { key: "bsky", name: "Bluesky", host: /(^|\.)bsky\.app$/ },
 ];
 
-chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+chrome.runtime.onMessageExternal.addListener((msg, sender, reply) => {
+  if (!PAGES.includes(sender.origin)) return;
+  if (msg && msg.ping) { reply({ ok: true, version: chrome.runtime.getManifest().version }); return; }
   if (!msg || typeof msg.open !== "string") return;
   let u;
   try { u = new URL(msg.open); } catch { return; }
@@ -37,7 +41,6 @@ const onSite = (site, tab) => {
 
 async function openIn(site, url, from) {
   // 1. Pinned tab of this site (one in the same window first).
-  // Checks every pinned tab by its address, so it works however the site's address is written.
   const pinned = (await chrome.tabs.query({ pinned: true })).filter(t => onSite(site, t));
   if (pinned.length) {
     const t = pinned.find(t => from && t.windowId === from.windowId) || pinned[0];

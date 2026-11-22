@@ -138,6 +138,8 @@ form.quick { margin-top: 14px; }
 .btn.ghost[aria-pressed="true"] { background: var(--blue); color: #fff; }
 .hot { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; margin-left: 4px; border-radius: 999px; font: 700 12px/1 var(--mono); background: var(--soft); color: var(--ink); border: 1.5px solid var(--line); }
 .hot.big { background: var(--sun); color: #18171c; }
+.pfnote { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 99; max-width: 90vw; padding: 10px 16px; border-radius: 12px; font: 700 14px/1.4 var(--body); background: #2bd67b; color: #111; box-shadow: 0 6px 24px rgba(0,0,0,.35); }
+.pfnote.bad { background: #ff5a5a; }
 .helperline { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
 .helperline a { color: var(--ink); font-weight: 700; }
 .helperline.on, .helperstatus.on { color: var(--ok, #2bd67b); font-weight: 700; }
@@ -428,7 +430,7 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
         <li>Click <b>Load unpacked</b> and pick the unzipped <b>post-finder-helper</b> folder.</li>
         <li>Come back here and press <b>Ctrl+F5</b>. You'll see a green ✓.</li>
       </ol>
-      <p class="sub">Chrome will say it can “read and change your data on reddit.com, x.com, facebook.com and bsky.app”: that's only so it can find your pinned tabs for those sites and open the search there. It doesn't read pages or send anything anywhere.</p>
+      <p class="sub">Chrome will say it can “read your browsing history”: that's Chrome's name for seeing which tabs are open, which it needs to find your pinned Reddit / X / Facebook / Bluesky tab. It doesn't read pages, save anything or send anything anywhere, and only this website can talk to it.</p>
     </div>
     <div class="panel">
       <h2 class="step-title">Reset</h2>
@@ -828,8 +830,55 @@ function recentPosts() {
   return (trending && Array.isArray(trending.posts) ? trending.posts : [])
     .filter(p => p && typeof p.date === "string" && /^\d{4}-\d\d-\d\d$/.test(p.date) && p.date >= from);
 }
-// ---- pinned-tab helper (a small Chrome add-on): it marks the page with data-pf-helper="on" ----
-const helperOn = () => document.documentElement.dataset.pfHelper === "on";
+// ---- pinned-tab helper (a small Chrome add-on). The page talks to it directly by its fixed ID.
+// If it answers, clicks on Reddit / X / Facebook / Bluesky links go to it, and it opens them in your pinned tab.
+const HELPER_ID = "fkoldgppmkcjokakejlmbocdomphaggp";
+const HELPER_SITES = /(^|\.)(reddit\.com|x\.com|twitter\.com|facebook\.com|bsky\.app)$/;
+let helper = false;
+const helperOn = () => helper;
+const canTalk = () => !inFrame && typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.sendMessage === "function";
+function helperNote(text, bad) {
+  let n = $("pfNote");
+  if (!n) { n = document.createElement("div"); n.id = "pfNote"; n.className = "pfnote"; n.setAttribute("role", "status"); document.body.appendChild(n); }
+  n.classList.toggle("bad", !!bad);
+  n.textContent = text;
+  clearTimeout(helperNote.t);
+  helperNote.t = setTimeout(() => n.remove(), bad ? 9000 : 3500);
+}
+function pingHelper() {
+  if (!canTalk()) return;
+  try {
+    chrome.runtime.sendMessage(HELPER_ID, { ping: true }, r => {
+      void chrome.runtime.lastError; // not installed: no answer
+      const on = !!(r && r.ok);
+      if (on !== helper) { helper = on; renderHelper(); }
+    });
+  } catch { /* not installed */ }
+}
+document.addEventListener("click", e => {
+  if (!helper || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+  const a = e.target instanceof Element ? e.target.closest("a[href]") : null;
+  if (!a) return;
+  let u;
+  try { u = new URL(a.href); } catch { return; }
+  if (u.protocol !== "https:" || !HELPER_SITES.test(u.hostname)) return;
+  e.preventDefault();
+  try {
+    chrome.runtime.sendMessage(HELPER_ID, { open: u.href }, r => {
+      if (chrome.runtime.lastError || !r) {
+        helper = false; renderHelper();
+        helperNote("The helper didn't answer, so this opened normally. Reload it in chrome://extensions and press Ctrl+F5 here.", true);
+        window.open(u.href, a.target || "_blank");
+        return;
+      }
+      helperNote("Helper: " + r.text, r.where === "error");
+    });
+  } catch {
+    window.open(u.href, a.target || "_blank");
+  }
+}, true);
+pingHelper();
+window.addEventListener("focus", pingHelper);
 function renderHelper() {
   const on = helperOn();
   $("helperLine").innerHTML = on
