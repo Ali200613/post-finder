@@ -138,6 +138,12 @@ form.quick { margin-top: 14px; }
 .btn.ghost[aria-pressed="true"] { background: var(--blue); color: #fff; }
 .hot { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; margin-left: 4px; border-radius: 999px; font: 700 12px/1 var(--mono); background: var(--soft); color: var(--ink); border: 1.5px solid var(--line); }
 .hot.big { background: var(--sun); color: #18171c; }
+.plathot { display: grid; gap: 8px; margin-top: 12px; }
+.plathot .prow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.plathot .plab { font: 700 12px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--c); min-width: 76px; }
+.plathot a { font: 700 14px/1 var(--body); color: var(--ink); text-decoration: none; background: var(--card); border: 2px solid var(--c); border-radius: 999px; padding: 7px 12px; }
+.plathot a:hover { background: var(--c); color: #fff; }
+.plathot .note { font: 700 12px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 #hotRow { margin-top: 14px; }
 .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--ink); color: var(--paper); font-weight: 700; padding: 12px 18px; border-radius: 14px; border: 2px solid var(--line); box-shadow: 4px 4px 0 var(--pink); z-index: 20; max-width: calc(100% - 32px); }
 .toast[hidden] { display: none; }
@@ -300,6 +306,7 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
       </div>
       <div class="gigs" id="gigs"></div>
       <div class="ac" id="hotRow"></div>
+      <div class="plathot" id="platHot"></div>
       <form class="add quick" id="quickForm">
         <input type="text" id="quickAdd" placeholder="Type any gig: pixel, comic, game, website…" autocomplete="off" aria-label="Add a gig" aria-describedby="quickSugg">
         <button class="btn" type="submit">Add</button>
@@ -350,6 +357,11 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
     </div>
     <p class="empty" id="trMsg">Loading…</p>
     <div class="stack" id="trBody" hidden>
+      <div class="panel">
+        <h3 class="step-title" style="font-size:20px">Trending gig on each site</h3>
+        <p class="sub">Which gigs clients post about on X, Reddit, Facebook and Bluesky. Click one to search it there.</p>
+        <div class="plathot" id="trPlat"></div>
+      </div>
       <div class="panel">
         <h3 class="step-title" style="font-size:20px">Gig types clients want most</h3>
         <p class="sub">Click one to add it to your gigs.</p>
@@ -796,6 +808,52 @@ function recentPosts() {
   return (trending && Array.isArray(trending.posts) ? trending.posts : [])
     .filter(p => p && typeof p.date === "string" && /^\d{4}-\d\d-\d\d$/.test(p.date) && p.date >= from);
 }
+// ---- trending gig on EACH site: count recent client posts per platform and gig ----
+const PLAT_OF = { reddit: "reddit", x: "x", twitter: "x", facebook: "fb", fb: "fb", bluesky: "bsky", bsky: "bsky" };
+// Which gig a post is about: its "gig" field from the hourly update, else the longest gig name in its title
+// (so "pixel artist" wins over "artist").
+function gigOf(p) {
+  if (p && typeof p.gig === "string" && p.gig.trim()) return p.gig.trim().toLowerCase();
+  const t = String(p && p.title || "").toLowerCase();
+  const names = [...GIGS, ...((trending && trending.roles) || []).map(r => r && r.name).filter(n => typeof n === "string")];
+  return names.map(n => n.toLowerCase()).filter(n => t.includes(n)).sort((a, b) => b.length - a.length)[0] || "";
+}
+function platSearch(plat, gig) {
+  if (plat === "reddit") return URL_FOR.reddit(gig, subsFor(gig)[0] || undefined);
+  return URL_FOR[plat](TEMPLATES[plat](gig)[0].q);
+}
+function renderPlatTrend(box) {
+  box.innerHTML = "";
+  if (!trending) return;
+  const all = (Array.isArray(trending.posts) ? trending.posts : []).filter(p => p && PLAT_OF[String(p.platform || "").toLowerCase()]);
+  let posts = recentPosts().filter(p => PLAT_OF[String(p.platform || "").toLowerCase()]), span = "last 24 hours";
+  if (!posts.length && all.length) { posts = all; span = "this week (nothing in the last 24 hours yet)"; }
+  const by = {};
+  posts.forEach(p => {
+    const plat = PLAT_OF[String(p.platform).toLowerCase()], g = gigOf(p);
+    if (!g) return;
+    (by[plat] = by[plat] || {})[g] = ((by[plat] || {})[g] || 0) + 1;
+  });
+  const note = document.createElement("span"); note.className = "note";
+  if (!Object.keys(by).length) {
+    note.textContent = "No client posts from X, Reddit, Facebook or Bluesky in the last 24 hours yet. The hourly update fills this in.";
+    box.appendChild(note); return;
+  }
+  note.textContent = "Trending on each site · " + span + ":";
+  box.appendChild(note);
+  ["x", "reddit", "fb", "bsky"].forEach(plat => {
+    if (!by[plat]) return;
+    const row = document.createElement("div"); row.className = "prow";
+    row.style.setProperty("--c", `var(--${PLAT[plat].c})`);
+    row.innerHTML = `<span class="plab">${esc(PLAT[plat].name.split(" ")[0])}</span>`;
+    Object.entries(by[plat]).sort((a, b) => b[1] - a[1]).slice(0, 4).forEach(([g, n]) => {
+      const a = link("", plat, platSearch(plat, g), `${esc(g)} <span class="hot${n >= 2 ? " big" : ""}">${n}</span>`);
+      a.title = `${n} client post${n > 1 ? "s" : ""} for ${g} on ${PLAT[plat].name}: click to search`;
+      row.appendChild(a);
+    });
+    box.appendChild(row);
+  });
+}
 function hotMap() {
   const m = new Map(), recent = recentPosts();
   (trending && Array.isArray(trending.roles) ? trending.roles : []).forEach(r => {
@@ -835,6 +893,7 @@ function renderFind() {
     };
     gigs.appendChild(b);
   });
+  renderPlatTrend($("platHot"));
   // gigs with 2+ client posts in the last 24 hours
   const hr = $("hotRow"); hr.innerHTML = "";
   const hot = [...hotMap()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -915,6 +974,7 @@ function renderTrending() {
   $("trMsg").hidden = true; $("trBody").hidden = false;
   const d = t.updatedAt ? new Date(t.updatedAt) : null;
   $("trUpd").textContent = d && !isNaN(d) ? "Last update: " + d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "";
+  renderPlatTrend($("trPlat"));
   const have = new Set(keywords.map(k => k.toLowerCase()));
   const roles = $("trRoles"); roles.innerHTML = "";
   (Array.isArray(t.roles) ? t.roles : []).slice(0, 20).forEach(r => {
