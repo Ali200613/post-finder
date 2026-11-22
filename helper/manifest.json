@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Post Finder helper",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Post Finder searches open in your pinned Reddit, X, Facebook or Bluesky tab. No pinned tab? One tab per site.",
   "permissions": ["storage"],
   "host_permissions": [
