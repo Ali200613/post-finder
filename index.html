@@ -138,6 +138,12 @@ form.quick { margin-top: 14px; }
 .btn.ghost[aria-pressed="true"] { background: var(--blue); color: #fff; }
 .hot { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; margin-left: 4px; border-radius: 999px; font: 700 12px/1 var(--mono); background: var(--soft); color: var(--ink); border: 1.5px solid var(--line); }
 .hot.big { background: var(--sun); color: #18171c; }
+.helperline { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.helperline a { color: var(--ink); font-weight: 700; }
+.helperline.on, .helperstatus.on { color: var(--ok, #2bd67b); font-weight: 700; }
+.helperstatus { font-weight: 700; color: var(--muted); }
+.steps { margin: 10px 0; padding-left: 22px; display: grid; gap: 8px; line-height: 1.5; }
+.steps code { font: 700 13px var(--mono); background: var(--soft); padding: 2px 6px; border-radius: 6px; }
 .plathot { display: grid; gap: 8px; margin-top: 12px; }
 .plathot .prow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .plathot .plab { font: 700 12px/1 var(--mono); text-transform: uppercase; letter-spacing: .05em; color: var(--c); min-width: 76px; }
@@ -329,6 +335,7 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
             <button type="button" data-mode="reuse">One tab per site</button>
             <button type="button" data-mode="same">This tab</button>
           </div>
+          <p class="helperline" id="helperLine"></p>
         </div>
         <div class="datecheck">
           <span class="label">Dates being searched</span>
@@ -410,6 +417,19 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
     </div>
     <!-- Searches are always the last 24 hours; these hold the dates for the code. -->
     <input type="hidden" id="from"><input type="hidden" id="to">
+    <div class="panel" id="helper">
+      <h2 class="step-title">Open searches in your pinned tabs</h2>
+      <p class="sub">Websites aren't allowed to use tabs you opened yourself, like your pinned Reddit tab. This small free Chrome add-on (made for Post Finder, it only works on this site) does it: a Reddit search opens in your pinned Reddit tab, an X search in your pinned X tab, and so on. No pinned tab for that site? It opens one tab and keeps reusing it.</p>
+      <p class="helperstatus" id="helperStatus"></p>
+      <ol class="steps">
+        <li><a class="btn" href="post-finder-helper.zip" download>Download the helper</a> and unzip it (right-click → Extract All).</li>
+        <li>In Chrome, type <code>chrome://extensions</code> in the address bar and press Enter.</li>
+        <li>Turn on <b>Developer mode</b> (top right).</li>
+        <li>Click <b>Load unpacked</b> and pick the unzipped <b>post-finder-helper</b> folder.</li>
+        <li>Come back here and press <b>Ctrl+F5</b>. You'll see a green ✓.</li>
+      </ol>
+      <p class="sub">Chrome will say it can “read and change your data on reddit.com, x.com, facebook.com and bsky.app”: that's only so it can find your pinned tabs for those sites and open the search there. It doesn't read pages or send anything anywhere.</p>
+    </div>
     <div class="panel">
       <h2 class="step-title">Reset</h2>
       <p class="sub">Go back to the starting gigs and settings on this browser.</p>
@@ -808,6 +828,19 @@ function recentPosts() {
   return (trending && Array.isArray(trending.posts) ? trending.posts : [])
     .filter(p => p && typeof p.date === "string" && /^\d{4}-\d\d-\d\d$/.test(p.date) && p.date >= from);
 }
+// ---- pinned-tab helper (a small Chrome add-on): it marks the page with data-pf-helper="on" ----
+const helperOn = () => document.documentElement.dataset.pfHelper === "on";
+function renderHelper() {
+  const on = helperOn();
+  $("helperLine").innerHTML = on
+    ? "✓ Helper on: searches open in your <b>pinned</b> Reddit / X / Facebook / Bluesky tab."
+    : `Want searches to open in your pinned tabs? <a href="#settings">Get the free helper</a>`;
+  $("helperLine").classList.toggle("on", on);
+  $("helperStatus").textContent = inFrame ? "This works on the Post Finder website (ali200613.github.io/post-finder), not inside claude.ai."
+    : on ? "✓ The helper is on in this browser." : "The helper is not on in this browser yet.";
+  $("helperStatus").classList.toggle("on", on && !inFrame);
+}
+
 // ---- trending gig on EACH site: count recent client posts per platform and gig ----
 const PLAT_OF = { reddit: "reddit", x: "x", twitter: "x", facebook: "fb", fb: "fb", bluesky: "bsky", bsky: "bsky" };
 // Which gig a post is about: its "gig" field from the hourly update, else the longest gig name in its title
@@ -918,6 +951,7 @@ function renderFind() {
   document.querySelectorAll("#range button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.days === days)));
   document.querySelectorAll("#openMode button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === openMode)));
   $("openBox").hidden = inFrame; // inside claude.ai the page can't take over its own tab
+  renderHelper();
   renderDates();
   const box = $("platforms"); box.innerHTML = "";
   if (!current) { $("gigName").textContent = "your gig"; box.innerHTML = `<p class="empty">Add a gig in step 1 to get searches.</p>`; return; }
