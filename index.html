@@ -737,7 +737,10 @@ function platformCard(p, items, opts = {}) {
 function renderDates() {
   const t24 = d => d.toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
   const s = since24(), sNice = new Date(s + "T00:00:00Z").toLocaleDateString([], { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-  $("dateLine").textContent = `✓ Last 24 hours: ${t24(ago24())} → now`;
+  const now = new Date(), fromT = ago24().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const todayNice = now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+  // Today's date first, so nobody thinks the search is for yesterday.
+  $("dateLine").textContent = `✓ Today, ${todayNice} · posts from the last 24 hours (since yesterday ${fromT})`;
   $("dateDetail").innerHTML =
     `<div><b>X / Twitter</b> and <b>Bluesky</b> get: <code>since:${esc(s)}</code> = from the start of ${esc(sNice)} (UTC / London time) up to right now. ` +
     `That covers the last 24 hours (sometimes a few hours more). Newest posts are at the top.</div>` +
