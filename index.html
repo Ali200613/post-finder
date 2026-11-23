@@ -598,8 +598,10 @@ function untilNext(d) { const x = new Date(d + "T00:00:00"); x.setDate(x.getDate
 // (it can show a few extra hours from that day; newest are at the top).
 const ago24 = () => new Date(Date.now() - 864e5);
 const since24 = () => ago24().toISOString().slice(0, 10);
-function dateTerms() {
-  if (days === 1) return " since:" + since24();
+// Bluesky takes an exact UTC time (since:2026-11-23T03:10:00Z), so it gets exactly the last 24 hours.
+const since24Exact = () => ago24().toISOString().slice(0, 19) + "Z";
+function dateTerms(plat) {
+  if (days === 1) return " since:" + (plat === "bsky" ? since24Exact() : since24());
   let s = "";
   const from = $("from").value, to = $("to").value, today = ymd(new Date());
   if (from) s += " since:" + from;
@@ -794,7 +796,7 @@ const URL_FOR = {
   // Facebook search can't take dates, but this switches on its "Recent posts" filter (newest first).
   // No extra words added: Facebook search gets worse with every word.
   fb: q => `https://www.facebook.com/search/posts/?q=${enc(q)}&filters=${enc(FB_RECENT)}`,
-  bsky: q => `https://bsky.app/search?q=${enc(q + dateTerms())}`,
+  bsky: q => `https://bsky.app/search?q=${enc(q + dateTerms("bsky"))}`,
 };
 const TEMPLATES = {
   x: r => [
@@ -892,8 +894,9 @@ function renderDates() {
   // Today's date first, so nobody thinks the search is for yesterday.
   $("dateLine").textContent = `✓ Today, ${todayNice} · posts from the last 24 hours (since yesterday ${fromT})`;
   $("dateDetail").innerHTML =
-    `<div><b>X / Twitter</b> and <b>Bluesky</b> get: <code>since:${esc(s)}</code> = from the start of ${esc(sNice)} (UTC / London time) up to right now. ` +
-    `That covers the last 24 hours (sometimes a few hours more). Newest posts are at the top.</div>` +
+    `<div><b>Bluesky</b> gets: <code>since:${esc(since24Exact())}</code> = exactly the last 24 hours (the time is updated each time you click).</div>` +
+    `<div><b>X / Twitter</b> gets: <code>since:${esc(s)}</code>. X only takes a whole date, counted in UTC (London time), so its search starts at ` +
+    `${esc(t24(new Date(s + "T00:00:00Z")))} your time. That always covers the last 24 hours, plus up to 24 hours more; between midnight and ${esc(new Date(Date.UTC(2000, 0, 1)).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))} your time the date looks 2 days old, which is normal. Newest posts are at the top.</div>` +
     `<div><b>Reddit</b> gets: <code>past week, newest first</code> (hiring subreddits get only a few client posts a day, so a 24-hour Reddit search is often empty; check the time on each post)</div>` +
     `<div><b>Facebook</b> gets: <code>Recent posts</code> (newest first). Facebook links can't carry exact dates.</div>`;
 }
@@ -971,6 +974,28 @@ function pingHelper() {
     });
   } catch { /* not installed */ }
 }
+// Dates must be fresh at the moment of the click, even if this tab was left open for hours or days.
+// 1) Bluesky links carry an exact time: update it to "24 hours before now" right before the link opens.
+const BSKY_SINCE = /since%3A\d{4}-\d{2}-\d{2}T\d{2}%3A\d{2}%3A\d{2}Z/;
+function freshenLink(e) {
+  if (days !== 1) return;
+  const a = e.target instanceof Element ? e.target.closest('a[href*="bsky.app/search"]') : null;
+  if (a && BSKY_SINCE.test(a.href)) a.href = a.href.replace(BSKY_SINCE, enc("since:" + since24Exact()));
+}
+document.addEventListener("pointerdown", freshenLink, true);
+document.addEventListener("click", freshenLink, true);
+// 2) X's date and the day ranges: rebuild every link when the date they use has changed.
+let builtFor = "";
+const dateKey = () => since24() + "|" + ymd(new Date());
+function refreshDates() {
+  if (dateKey() === builtFor) return;
+  if (days >= 1) setDays(days);
+  if (builtFor) renderAll();
+  builtFor = dateKey();
+}
+setInterval(refreshDates, 60e3);
+window.addEventListener("focus", refreshDates);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshDates(); });
 document.addEventListener("click", e => {
   if (!helper || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
   const a = e.target instanceof Element ? e.target.closest("a[href]") : null;
@@ -1337,7 +1362,7 @@ function show(v) {
 document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => { show(b.dataset.view); try { history.replaceState(null, "", "#" + b.dataset.view); } catch {} }));
 window.addEventListener("hashchange", () => show(location.hash.slice(1)));
 show(location.hash.slice(1));
-renderAll();
+renderAll(); builtFor = dateKey();
 
 // ================== load trending + market ==================
 function applyData(d) {
