@@ -631,29 +631,70 @@ const VIDEO = /video|editor|youtube|thumbnail|vfx|motion|explainer|lyric|animat/
 const DESIGN = /graphic|logo|brand|ui|ux|web designer|website designer|landing|app designer|thumbnail|flyer|poster|banner|packaging|merch|t-shirt|font|icon|presentation|sticker/i;
 const DEV = /develop|program|script|wordpress|shopify|webflow|wix|react|next\.js|python|javascript|frontend|backend|full stack|extension|bot/i;
 const any = (...rx) => ({ test: s => rx.some(x => x.test(s)) });
+const BIZ = /logo|brand|web designer|website|landing|app developer|app designer|mobile app|shopify|wordpress|webflow|wix|full stack|packaging|graphic designer|flyer/i;
+const YT = /video|editor|youtube|thumbnail/i;
 const REDDIT_SUBS = [
+  // VTuber, streaming, furry
   { s: "vtubers", w: "looking for", fits: VT },
+  { s: "Live2D", w: "looking for", fits: /live2d|vtuber|rigger/i },
+  { s: "Twitch", w: "looking for", fits: /twitch|emote|badge|vtuber/i },
+  { s: "FurryCommissions", w: "looking for", fits: /furry/i },
+  // comics, books, visual novels
   { s: "ComicBookCollabs", w: "paid", fits: COMIC },
   { s: "childrensbooks", w: "looking for", fits: /children|kid|picture book/i },
   { s: "selfpublish", w: "looking for", fits: BOOK },
+  { s: "selfpublishing", w: "looking for", fits: BOOK },
+  { s: "KDP", w: "looking for", fits: BOOK },
+  { s: "vndevs", w: "paid", fits: /anime|character|sprite|background artist|2d game|game artist/i },
+  // Roblox, Minecraft, Discord, tattoo, 3D
+  { s: "HiddenDevs", w: "hiring", fits: /roblox/i },
   { s: "robloxgamedev", w: "hiring", fits: /roblox/i },
+  { s: "ROBLOXStudio", w: "hiring", fits: /roblox/i },
   { s: "admincraft", w: "hiring", fits: /minecraft/i },
   { s: "Discord_Bots", w: "hiring", fits: /discord|bot/i },
   { s: "TattooDesigns", w: "paid", fits: /tattoo/i },
+  { s: "3Dprintmything", w: "pay", fits: /3d model|3d artist|3d character|prop artist/i },
+  { s: "3Dmodeling", w: "hiring", fits: /3d|prop|texture|environment/i },
+  // video & YouTube
+  { s: "motiongraphics", w: "hiring", fits: /motion|explainer|logo animator|lyric/i },
+  { s: "PartneredYoutube", w: "hiring", fits: YT },
+  { s: "youtubers", w: "hiring", fits: YT },
+  { s: "YouTubeEditorsForHire", w: "hiring", fits: YT },
   { s: "CreatorServices", f: "Seeking Paid", fits: VIDEO },
   { s: "FindVideoEditors", w: "hiring", fits: /video|editor|youtube|thumbnail|motion|vfx|explainer|lyric/i },
+  // game dev
   { s: "gameDevClassifieds", w: "paid", fits: GAME },
   { s: "INAT", w: "paid", fits: GAME },
   { s: "gameDevJobs", w: "paid", fits: GAME },
+  // web & code platforms
+  { s: "PythonJobs", w: "hiring", fits: /python/i },
   { s: "RemoteJS", w: "", fits: /react|next\.js|javascript|frontend|full stack|web developer|website developer/i },
+  { s: "shopify", w: "hire", fits: /shopify/i },
+  { s: "Wordpress", w: "hire", fits: /wordpress/i },
+  { s: "webflow", w: "hire", fits: /webflow/i },
+  { s: "WIX", w: "hire", fits: /wix/i },
+  // design
   { s: "DesignJobs", f: "Hiring", fits: DESIGN },
+  // art commissions
   { s: "HungryArtists", f: "Hiring", fits: any(ART, COMIC, BOOK, VT, /animat|3d|pixel|sprite/i) },
   { s: "artcommissions", f: "Patron", fits: any(ART, COMIC, BOOK, VT) },
   { s: "hireanartist", f: "Hiring", fits: any(ART, COMIC, BOOK, VT, /animat|pixel|sprite/i) },
   { s: "commissions", w: "looking for", fits: any(ART, VT) },
+  { s: "starvingartists", w: "hiring", fits: any(ART, COMIC, BOOK, VT) },
+  // general hiring boards (every gig)
   { s: "forhire", f: "Hiring", fits: /./ },
+  { s: "freelance_forhire", w: "hiring", fits: /./ },
   { s: "slavelabour", w: "task", fits: any(DESIGN, DEV, /video|editor/i) },
+  { s: "DoneDirtCheap", w: "task", fits: any(DESIGN, DEV, /video|editor/i) },
+  { s: "Jobs4Bitcoins", w: "hiring", fits: any(DESIGN, DEV, ART, VIDEO) },
   { s: "jobbit", w: "hiring", fits: DEV },
+  { s: "hiring", w: "hiring", fits: any(DESIGN, DEV, VIDEO) },
+  { s: "WorkOnline", w: "hiring", fits: any(DESIGN, DEV, VIDEO) },
+  { s: "RemoteJobs", w: "hiring", fits: DEV },
+  // business owners asking for help (websites, logos, apps)
+  { s: "smallbusiness", w: "looking for", fits: BIZ },
+  { s: "Entrepreneur", w: "looking for", fits: BIZ },
+  { s: "startups", w: "looking for", fits: BIZ },
 ];
 // A gig's communities: the ones it fits, niche first (list order). A character/concept/game designer is art, not graphic design.
 const subsFor = r => REDDIT_SUBS.filter(x => x.fits.test(r) && !(x.s === "DesignJobs" && /character|concept|game|level/i.test(r)));
