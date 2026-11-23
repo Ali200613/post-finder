@@ -639,22 +639,22 @@ const REDDIT_SUBS = [
   // VTuber, streaming
   { s: "vtubers", w: "looking for", fits: VT },
   { s: "Live2D", w: "looking for", fits: /live2d|vtuber|rigger/i },
-  { s: "VirtualYoutubers", w: "commission", fits: VT },
+  { s: "VirtualYoutubers", w: "looking for", fits: VT },
   { s: "Twitch", w: "looking for", fits: /twitch|emote|badge|vtuber|video editor/i },
   { s: "streaming", w: "looking for", fits: /twitch|emote|badge|vtuber/i },
   // furry, OCs, fan art, characters
   { s: "FurryCommissions", w: "looking for", fits: /furry/i },
-  { s: "furry", w: "commission", fits: /furry/i },
+  { s: "furry", w: "looking for", fits: /furry/i },
   { s: "OriginalCharacter", w: "looking for", fits: /character|anime|chibi|furry|reference/i },
   { s: "characterdrawing", w: "paid", fits: /character|anime|chibi|fan artist/i },
   { s: "drawforme", w: "paid", fits: /artist|portrait|character|anime|chibi|cartoon|caricature/i },
-  { s: "fanart", w: "commission", fits: /fan artist|anime|character/i },
+  { s: "fanart", w: "looking for", fits: /fan artist|anime|character/i },
   // maps, tabletop, worldbuilding
-  { s: "FantasyMaps", w: "commission", fits: /map/i },
-  { s: "mapmaking", w: "commission", fits: /map/i },
-  { s: "battlemaps", w: "commission", fits: /map/i },
-  { s: "worldbuilding", w: "commission", fits: /map|concept|character designer/i },
-  { s: "tabletopgamedesign", w: "artist", fits: /^artist$|^illustrator$|character designer|concept|game designer|game artist|icon/i },
+  { s: "FantasyMaps", w: "looking for", fits: /map/i },
+  { s: "mapmaking", w: "looking for", fits: /map/i },
+  { s: "battlemaps", w: "looking for", fits: /map/i },
+  { s: "worldbuilding", w: "looking for", fits: /map|concept|character designer/i },
+  { s: "tabletopgamedesign", w: "looking for", fits: /^artist$|^illustrator$|character designer|concept|game designer|game artist|icon/i },
   // comics, books, visual novels, album covers
   { s: "ComicBookCollabs", w: "paid", fits: COMIC },
   { s: "webcomics", w: "hiring", fits: COMIC },
@@ -663,11 +663,11 @@ const REDDIT_SUBS = [
   { s: "selfpublishing", w: "looking for", fits: BOOK },
   { s: "KDP", w: "looking for", fits: BOOK },
   { s: "Authors", w: "looking for", fits: BOOK },
-  { s: "fantasywriters", w: "commission", fits: /book|cover|map|character/i },
+  { s: "fantasywriters", w: "looking for", fits: /book|cover|map|character/i },
   { s: "vndevs", w: "paid", fits: /anime|character|sprite|background artist|2d game|game artist/i },
   { s: "renpy", w: "paid", fits: /anime|character|sprite|background artist|2d game|game artist/i },
-  { s: "makinghiphop", w: "cover art", fits: /album|cover|lyric|music video|logo/i },
-  { s: "WeAreTheMusicMakers", w: "cover art", fits: /album|lyric/i },
+  { s: "makinghiphop", w: "looking for", fits: /album|cover|lyric|music video|logo/i },
+  { s: "WeAreTheMusicMakers", w: "looking for", fits: /album|lyric/i },
   // Roblox, Minecraft, Discord
   { s: "HiddenDevs", w: "hiring", fits: /roblox/i },
   { s: "robloxgamedev", w: "hiring", fits: /roblox/i },
@@ -691,12 +691,12 @@ const REDDIT_SUBS = [
   { s: "PartneredYoutube", w: "hiring", fits: YT },
   { s: "youtubers", w: "hiring", fits: YT },
   { s: "NewTubers", w: "looking for", fits: YT },
-  { s: "SmallYTChannel", w: "editor", fits: YT },
+  { s: "SmallYTChannel", w: "looking for", fits: YT },
   { s: "YouTubeEditorsForHire", w: "hiring", fits: YT },
   { s: "CreatorServices", f: "Seeking Paid", fits: VIDEO },
   { s: "FindVideoEditors", w: "hiring", fits: /video|editor|youtube|thumbnail|motion|vfx|explainer|lyric/i },
   { s: "VideoEditing", w: "hiring", fits: /video editor|youtube video/i },
-  { s: "podcasting", w: "editor", fits: /video editor/i },
+  { s: "podcasting", w: "looking for", fits: /video editor/i },
   { s: "Filmmakers", w: "paid", fits: /video editor|vfx|storyboard|motion/i },
   { s: "vfx", w: "hiring", fits: /vfx/i },
   // game dev
@@ -709,35 +709,35 @@ const REDDIT_SUBS = [
   { s: "godot", w: "hiring", fits: /godot/i },
   { s: "RPGMaker", w: "paid", fits: /pixel|sprite|game artist|2d game|game developer/i },
   // apps, code, web platforms
-  { s: "AppIdeas", w: "developer", fits: APP },
-  { s: "AppBusiness", w: "developer", fits: APP },
+  { s: "AppIdeas", w: "looking for", fits: APP },
+  { s: "AppBusiness", w: "looking for", fits: APP },
   { s: "SaaS", w: "looking for", fits: any(APP, /landing|web developer|web designer|full stack|react|next\.js/i) },
   { s: "indiehackers", w: "looking for", fits: any(APP, /landing|web developer|web designer|full stack/i) },
-  { s: "nocode", w: "hire", fits: /webflow|wix|website|web designer|landing|app developer/i },
+  { s: "nocode", w: "looking for", fits: /webflow|wix|website|web designer|landing|app developer/i },
   { s: "PythonJobs", w: "hiring", fits: /python/i },
-  { s: "automation", w: "hire", fits: /python|bot|extension/i },
-  { s: "webscraping", w: "hire", fits: /python|javascript/i },
-  { s: "chrome_extensions", w: "hire", fits: /extension/i },
+  { s: "automation", w: "looking for", fits: /python|bot|extension/i },
+  { s: "webscraping", w: "looking for", fits: /python|javascript/i },
+  { s: "chrome_extensions", w: "looking for", fits: /extension/i },
   { s: "RemoteJS", w: "", fits: /react|next\.js|javascript|frontend|full stack|web developer|website developer/i },
-  { s: "shopify", w: "hire", fits: /shopify/i },
-  { s: "ShopifyeCommerce", w: "hire", fits: /shopify/i },
-  { s: "Wordpress", w: "hire", fits: /wordpress/i },
-  { s: "woocommerce", w: "hire", fits: /wordpress/i },
-  { s: "webflow", w: "hire", fits: /webflow/i },
-  { s: "WIX", w: "hire", fits: /wix/i },
-  { s: "squarespace", w: "hire", fits: /web designer|website designer/i },
+  { s: "shopify", w: "looking for", fits: /shopify/i },
+  { s: "ShopifyeCommerce", w: "looking for", fits: /shopify/i },
+  { s: "Wordpress", w: "looking for", fits: /wordpress/i },
+  { s: "woocommerce", w: "looking for", fits: /wordpress/i },
+  { s: "webflow", w: "looking for", fits: /webflow/i },
+  { s: "WIX", w: "looking for", fits: /wix/i },
+  { s: "squarespace", w: "looking for", fits: /web designer|website designer/i },
   // design
   { s: "DesignJobs", f: "Hiring", fits: DESIGN },
   { s: "PhotoshopRequest", w: "paid", fits: /graphic|thumbnail|poster|flyer|banner|logo|digital painter|matte/i },
   { s: "logodesign", w: "hiring", fits: /logo|brand/i },
   { s: "branding", w: "looking for", fits: /logo|brand|packaging/i },
   // merch & shops
-  { s: "streetwearstartup", w: "designer", fits: MERCH },
+  { s: "streetwearstartup", w: "looking for", fits: MERCH },
   { s: "EtsySellers", w: "looking for", fits: MERCH },
-  { s: "printondemand", w: "designer", fits: MERCH },
-  { s: "AmazonFBA", w: "designer", fits: /packaging|logo|brand|product/i },
+  { s: "printondemand", w: "looking for", fits: MERCH },
+  { s: "AmazonFBA", w: "looking for", fits: /packaging|logo|brand|product/i },
   { s: "ecommerce", w: "looking for", fits: /shopify|website|web designer|packaging|logo|brand/i },
-  { s: "dropship", w: "store", fits: /shopify/i },
+  { s: "dropship", w: "looking for", fits: /shopify/i },
   { s: "NFT", w: "looking for", fits: /nft/i },
   // art commissions
   { s: "HungryArtists", f: "Hiring", fits: any(ART, COMIC, BOOK, VT, /animat|3d|pixel|sprite/i) },
@@ -771,7 +771,13 @@ const subsFor = r => REDDIT_SUBS.filter(x => x.fits.test(r) && !(x.s === "Design
 const subsForAll = roles => [...new Set(roles.flatMap(r => subsFor(r)))];
 // How the client tag shows in labels: Hiring / Patron flair, or the word clients write.
 const tagOf = x => x.f || (x.w === "paid" ? "[Paid]" : x.w === "task" ? "[Task]" : x.w ? "“" + x.w + "”" : "job");
-const subQuery = (x, words) => ((x.f ? `flair_name:"${x.f}"` : x.w) + (words ? " " + words : "")).trim();
+const subQuery = (x, words) => ((x.f ? `flair_name:"${x.f}"` : / /.test(x.w) ? `"${x.w}"` : x.w) + (words ? " " + words : "")).trim();
+// Inside a community's client posts, search the gig's key word: "pixel artist" -> "pixel", "Roblox scripter" -> "Roblox",
+// so "need pixel art for my game" is found too. A plain "artist" in a Hiring flair = every Hiring post there.
+const gigWords = (r, x) => {
+  const k = r.replace(/\b(artists?|designers?|developers?|illustrators?|animators?|editors?|modell?ers?|painters?|scripters?|riggers?)\b/gi, " ").replace(/\s+/g, " ").trim();
+  return k || (x.f ? "" : r);
+};
 const subUrl = (x, words) => `https://www.reddit.com/r/${x.s}/search/?q=${enc(subQuery(x, words))}&restrict_sr=1&sort=new&t=${R_T}`;
 const FB_RECENT = btoa(JSON.stringify({ "recent_posts:0": JSON.stringify({ name: "recent_posts", args: "" }) }));
 const URL_FOR = {
@@ -805,7 +811,7 @@ const TEMPLATES = {
   ],
   // First: each subreddit's own client flair + the gig. Then the plain words clients write in their titles.
   reddit: r => [
-    ...subsFor(r).map(x => ({ label: `r/${x.s} · ${tagOf(x)} posts · ${r}`, q: r, opt: x })),
+    ...subsFor(r).map(x => ({ label: `r/${x.s} · ${tagOf(x)} posts · ${r}`, q: gigWords(r, x), opt: x })),
     { label: `“looking for ${an(r)}”`, q: `"looking for ${an(r)}"`, opt: subsFor(r) },
     { label: `“need ${an(r)}”`, q: `"need ${an(r)}"`, opt: subsFor(r) },
     { label: `${r} + budget`, q: `${r} budget`, opt: subsFor(r) },
@@ -922,7 +928,7 @@ function multiSearches(roles) {
     // (e.g. game developer → r/gameDevClassifieds and r/forhire), then each community's full client feed.
     reddit: [
       ...subsForAll(roles).flatMap(x => roles.filter(r => subsFor(r).includes(x))
-        .map(r => ({ label: `r/${x.s} · ${tagOf(x)} posts · ${r}`, q: r, opt: x }))).slice(0, 16),
+        .map(r => ({ label: `r/${x.s} · ${tagOf(x)} posts · ${r}`, q: gigWords(r, x), opt: x }))).slice(0, 16),
       ...subsForAll(roles).map(x => ({ label: `r/${x.s} · all ${tagOf(x)} posts`, q: "", opt: x })),
     ],
     // Facebook and Bluesky can't search "this OR that", so one search per gig.
