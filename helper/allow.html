@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Post Finder helper: read Reddit flairs</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 560px; margin: 60px auto; padding: 0 20px; color: #1a1a1a; }
+  h1 { font-size: 22px; }
+  button { font: 600 16px system-ui, sans-serif; padding: 12px 20px; border-radius: 10px; border: 0; background: #ff4500; color: #fff; cursor: pointer; }
+  .ok { color: #1a7f37; font-weight: 600; }
+  .bad { color: #b42318; font-weight: 600; }
+  li { margin: 6px 0; }
+</style>
+</head>
+<body>
+  <h1>Let the helper read Reddit flairs</h1>
+  <p>Post Finder wants to know which flair (tag) each Reddit community gives client posts, like <b>Hiring</b> on r/HungryArtists, so it can show you only client posts.</p>
+  <p>To do that, the helper needs to read Reddit. It only ever reads:</p>
+  <ul>
+    <li>the newest 100 posts of a community you ask about (to see their flairs), and</li>
+    <li>Reddit's community search, when you search for communities on the Post Finder page.</li>
+  </ul>
+  <p>It only does this when you click on the Post Finder page. It never posts, never sends anything anywhere else, and never reads any other website.</p>
+  <p><button id="allow" type="button">Allow reading Reddit</button></p>
+  <p id="msg" role="status"></p>
+  <script src="allow.js"></script>
+</body>
+</html>

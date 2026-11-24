@@ -262,6 +262,18 @@ ul.tips { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .scat .row { display: flex; flex-wrap: wrap; gap: 7px; }
 .add-s { font: 14px var(--body); color: var(--ink); background: transparent; border: 2px dashed var(--line); border-radius: 999px; padding: 6px 11px; cursor: pointer; }
 .add-s:hover { border-style: solid; background: var(--sun); color: #18171c; }
+.rsnote { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+.rsnote.bad { color: var(--pink); font-weight: 700; }
+.rsnote.ok { color: var(--green, #1a7f37); font-weight: 700; }
+.rsrow { border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-top: 8px; background: var(--paper); }
+.rsrow .top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.rsrow .nm { font: 700 15px/1.3 var(--mono); }
+.rsrow .meta { color: var(--muted); font-size: 13px; }
+.rsrow .about { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.rsrow .pick { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rsrow .pick button.tag { font: 13px var(--mono); border: 2px dashed var(--line); border-radius: 999px; padding: 5px 9px; background: transparent; color: var(--ink); cursor: pointer; }
+.rsrow .pick button.tag[aria-pressed="true"] { border-style: solid; background: var(--reddit); color: #fff; }
+.rsrow .gigpick { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 10px; font-size: 14px; }
 .add-s.on { opacity: .5; cursor: default; border-style: solid; }
 .dates { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
 .dates label { display: grid; gap: 6px; font-weight: 700; font-size: 14px; }
@@ -417,6 +429,22 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
       <p class="sub">Click to add.</p>
       <div id="sugg"></div>
     </div>
+    <div class="panel" id="rsubs">
+      <h2 class="step-title">Reddit communities</h2>
+      <p class="sub">Search any Reddit community and add it. The helper reads the flair (tag) that community gives client posts, like <b>Hiring</b>, so Post Finder only shows you client posts there.</p>
+      <form class="add" id="rsForm" style="max-width:560px">
+        <input type="text" id="rsInput" placeholder="A topic or name: dnd, tattoo, r/HungryArtists…" autocomplete="off" aria-label="Find a Reddit community">
+        <button class="btn" type="submit">Search</button>
+      </form>
+      <p class="rsnote" id="rsMsg" role="status"></p>
+      <div id="rsOut"></div>
+      <span class="label" style="margin-top:18px">Communities you added</span>
+      <div id="rsMine"></div>
+      <span class="label" style="margin-top:18px">Check the 113 built-in communities</span>
+      <p class="sub" style="margin:0 0 10px">Reads the real client flair of every built-in community and fixes the searches. Communities that are banned, private or gone are taken out. Takes about 3 minutes.</p>
+      <button class="btn ghost" type="button" id="rsCheck">Check all communities</button>
+      <p class="rsnote" id="rsCheckMsg" role="status"></p>
+    </div>
     <!-- Searches are always the last 24 hours; these hold the dates for the code. -->
     <input type="hidden" id="from"><input type="hidden" id="to">
     <div class="panel" id="helper">
@@ -430,6 +458,7 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
         <li>Click <b>Load unpacked</b> and pick the unzipped <b>post-finder-helper</b> folder.</li>
         <li>Come back here and press <b>Ctrl+F5</b>. You'll see a green ✓.</li>
       </ol>
+      <p class="sub"><b>Already have the helper?</b> Version 2.1 can also read Reddit flairs. Download it again, unzip it over your <b>post-finder-helper</b> folder (replace the files), then click the ↻ reload arrow on Post Finder helper in <code>chrome://extensions</code>.</p>
       <p class="sub">Chrome will say it can “read your browsing history”: that's Chrome's name for seeing which tabs are open, which it needs to find your pinned Reddit / X / Facebook / Bluesky tab. It doesn't read pages, save anything or send anything anywhere, and only this website can talk to it.</p>
     </div>
     <div class="panel">
@@ -765,8 +794,48 @@ const REDDIT_SUBS = [
   { s: "startups", w: "looking for", fits: BIZ },
   { s: "sweatystartup", w: "looking for", fits: /logo|website|web designer|landing|flyer/i },
 ];
+// ---- Your own Reddit communities + flairs read from Reddit by the helper ----
+// pf.mysubs = communities you added: { s, f (client flair) or w (client word), gigs: [] = all your gigs }
+// pf.flairs = what the helper found for a built-in community: { f, w, seen: [flairs], dead, at }
+let mySubs = store.get("pf.mysubs", []);
+let flairFix = store.get("pf.flairs", {});
+function fixed(x) {
+  const o = flairFix[x.s.toLowerCase()];
+  if (!o) return x;
+  if (o.dead) return null;                                        // banned / private / gone: skip it
+  if (o.f) return { ...x, f: o.f, checked: true };                  // the flair client posts really get
+  if (x.f) return { ...x, checked: true };                          // a known client flair stays, even if the newest 100 posts had none
+  return { ...x, f: undefined, w: o.w || x.w, checked: true };     // no client flair there: client word
+}
+function buildSubs() {
+  const mine = mySubs.map(m => ({ s: m.s, f: m.f || undefined, w: m.f ? "" : (m.w || "hiring"), mine: true,
+    fits: m.gigs && m.gigs.length ? { test: r => m.gigs.some(g => g.toLowerCase() === String(r).toLowerCase()) } : /./ }));
+  const have = new Set(mine.map(x => x.s.toLowerCase()));
+  return [...mine, ...REDDIT_SUBS.filter(x => !have.has(x.s.toLowerCase())).map(fixed).filter(Boolean)];
+}
+let SUBS = buildSubs();
+// Which flair is the CLIENT flair? Count the flairs on a community's newest 100 posts.
+const CLIENT_TAG = /\b(hiring|hire|patron|paid|task|seeking|client|request|requests|job|jobs|wanted|buying|looking for|iso|commission request)\b/i;
+const NOT_CLIENT = /for ?hire|unpaid|\boffer|portfolio|showcase|available|\bopen\b|selling|for sale|\bfree\b|meta|announce|discussion|question|feedback|filled|closed|complete|solved|resource|tutorial/i;
+function pickTag(posts) {
+  const count = {};
+  posts.forEach(p => { if (p.f) count[p.f] = (count[p.f] || 0) + 1; });
+  const seen = Object.entries(count).sort((a, b) => b[1] - a[1]);
+  const client = seen.filter(([f]) => CLIENT_TAG.test(f) && !NOT_CLIENT.test(f));
+  // No client flair: maybe clients write a tag in the title, like [Hiring] or [Paid].
+  const tags = {};
+  posts.forEach(p => { const m = /^\s*[\[(]\s*(hiring|paid|task|patron|seeking|request|job)\b/i.exec(p.t); if (m) tags[m[1].toLowerCase()] = (tags[m[1].toLowerCase()] || 0) + 1; });
+  const tag = Object.entries(tags).sort((a, b) => b[1] - a[1])[0];
+  return {
+    f: client.length ? client[0][0] : "",
+    fCount: client.length ? client[0][1] : 0,
+    w: tag ? tag[0] : "looking for",
+    wCount: tag ? tag[1] : 0,
+    seen, total: posts.length,
+  };
+}
 // A gig's communities: the ones it fits, niche first (list order). A character/concept/game designer is art, not graphic design.
-const subsFor = r => REDDIT_SUBS.filter(x => x.fits.test(r) && !(x.s === "DesignJobs" && /character|concept|game|level/i.test(r)));
+const subsFor = r => SUBS.filter(x => x.fits.test(r) && !(x.s === "DesignJobs" && /character|concept|game|level/i.test(r)));
 // All communities that fit ANY of the picked gigs, best first, no repeats.
 const subsForAll = roles => [...new Set(roles.flatMap(r => subsFor(r)))];
 // How the client tag shows in labels: Hiring / Patron flair, or the word clients write.
@@ -786,7 +855,7 @@ const URL_FOR = {
   // (search the words in all of them at once). No opt = the main hiring communities.
   reddit: (q, opt) => {
     if (opt && !Array.isArray(opt) && typeof opt === "object") return subUrl(opt, q);
-    const list = Array.isArray(opt) && opt.length ? opt : REDDIT_SUBS.filter(x => ["HungryArtists", "artcommissions", "hireanartist", "forhire", "DesignJobs", "gameDevClassifieds"].includes(x.s));
+    const list = Array.isArray(opt) && opt.length ? opt : SUBS.filter(x => ["HungryArtists", "artcommissions", "hireanartist", "forhire", "DesignJobs", "gameDevClassifieds"].includes(x.s));
     const p = Array.isArray(opt) ? q : redditPlain(q);
     if (!isReal()) return `https://www.reddit.com/search/?q=${enc(p)}&sort=new&t=${R_T}`;
     return `https://www.reddit.com/r/${list.map(x => x.s).join("+")}/search/?q=${enc(p)}&restrict_sr=1&sort=new&t=${R_T}`;
@@ -879,6 +948,10 @@ function platformCard(p, items, opts = {}) {
     const lab = document.createElement("p"); lab.className = "pnote"; lab.style.margin = "0 0 8px";
     lab.textContent = "All client posts in the communities for your gigs:";
     card.appendChild(lab); card.appendChild(d);
+    const more = document.createElement("a"); more.href = "#settings"; more.className = "pnote"; more.style.cssText = "display:block;margin:0 12px 14px";
+    more.textContent = "+ Add any other Reddit community (its client flair is read for you)";
+    more.onclick = e => { e.preventDefault(); show("settings"); try { history.replaceState(null, "", "#settings"); } catch {} $("rsubs").scrollIntoView({ block: "start" }); };
+    card.appendChild(more);
   }
   return card;
 }
@@ -968,6 +1041,7 @@ function pingHelper() {
     chrome.runtime.sendMessage(HELPER_ID, { ping: true }, r => {
       void chrome.runtime.lastError; // not installed: no answer
       const on = !!(r && r.ok);
+      helperVer = (r && r.version) || "";
       if (on !== helper) { helper = on; renderHelper(); }
     });
   } catch { /* not installed */ }
@@ -1029,6 +1103,160 @@ function renderHelper() {
     : on ? "✓ The helper is on in this browser." : "The helper is not on in this browser yet.";
   $("helperStatus").classList.toggle("on", on && !inFrame);
 }
+// ---- Reddit communities panel: find any community, read its client flair with the helper, add it ----
+let helperVer = "";
+const helperHasReddit = () => helper && parseFloat(helperVer) >= 2.1;
+const rsSleep = ms => new Promise(r => setTimeout(r, ms));
+function askHelper(msg) {
+  return new Promise(res => {
+    if (!canTalk()) return res({ error: "nohelper" });
+    try { chrome.runtime.sendMessage(HELPER_ID, msg, r => { if (chrome.runtime.lastError || !r) res({ error: "nohelper" }); else res(r); }); }
+    catch { res({ error: "nohelper" }); }
+  });
+}
+function rsMsg(id, text, kind) { const p = $(id); p.textContent = text; p.className = "rsnote" + (kind ? " " + kind : ""); }
+const fmtN = n => n == null ? "" : n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M" : n >= 1e3 ? Math.round(n / 1e3) + "k" : String(n);
+const isGone = r => r.error === 404 || ["banned", "private", "quarantined"].includes(r.reason);
+// A helper answer -> a message for you ("" = fine, "ALLOW" = Reddit access not allowed yet).
+function helperProblem(r) {
+  if (r.error === "nohelper") return helper ? "The helper didn't answer. Reload it in chrome://extensions and press Ctrl+F5 here." : "This needs the free helper add-on (steps under “Open searches in your pinned tabs” below).";
+  if (r.need === "allow") return "ALLOW";
+  if (r.error === 404 || r.reason === "banned") return "Reddit says this community doesn't exist or is banned.";
+  if (r.reason === "private") return "This community is private.";
+  if (r.reason === "quarantined") return "Reddit has quarantined this community.";
+  if (r.error === 429) return "Reddit says too many requests. Wait a minute and try again.";
+  if (r.error === "name") return "That isn't a valid community name.";
+  if (r.error) return `Reddit refused (${r.error}${r.reason ? ", " + r.reason : ""}). Make sure you're logged in to Reddit in this browser, then try again.`;
+  return "";
+}
+async function needAllow(id) {
+  await askHelper({ allowReddit: true });
+  rsMsg(id, "A helper tab opened: click “Allow reading Reddit” there, then come back and click again.", "bad");
+}
+function helperReady(id) {
+  if (inFrame) { rsMsg(id, "This works on the Post Finder website (ali200613.github.io/post-finder), not inside claude.ai.", "bad"); return false; }
+  if (!helper) { rsMsg(id, "This needs the free helper add-on: steps under “Open searches in your pinned tabs” below.", "bad"); return false; }
+  if (!helperHasReddit()) { rsMsg(id, `Your helper is version ${helperVer || "2.0"}. Update it to 2.1 (steps under “Open searches in your pinned tabs” below), then press Ctrl+F5.`, "bad"); return false; }
+  return true;
+}
+$("rsForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = $("rsInput").value.trim().replace(/^\/?r\//i, "").trim();
+  if (!name || !helperReady("rsMsg")) return;
+  rsMsg("rsMsg", "Searching Reddit…");
+  const r = await askHelper({ findSubs: name });
+  const p = helperProblem(r);
+  if (p === "ALLOW") return needAllow("rsMsg");
+  if (p) return rsMsg("rsMsg", p, "bad");
+  let list = r.subs || [];
+  const same = x => x.name.toLowerCase() === name.toLowerCase();
+  // A community typed by its exact name goes first.
+  if (/^[A-Za-z0-9_]{2,21}$/.test(name)) list = list.some(same) ? [...list.filter(same), ...list.filter(x => !same(x))] : [{ name, members: null, about: "" }, ...list];
+  rsMsg("rsMsg", list.length ? `${list.length} communities. Click “Read flairs” on one to see its client flair and add it.` : "No communities found. Try another word.");
+  const out = $("rsOut"); out.innerHTML = "";
+  list.forEach(x => out.appendChild(rsRow(x)));
+});
+function rsRow(x) {
+  const row = document.createElement("div"); row.className = "rsrow";
+  const have = SUBS.find(s => s.s.toLowerCase() === x.name.toLowerCase());
+  row.innerHTML = `<div class="top"><div><span class="nm">r/${esc(x.name)}</span> <span class="meta">${x.members != null ? fmtN(x.members) + " members" : ""}${have ? (x.members != null ? " · " : "") + (have.mine ? "you added it" : "already searched") : ""}</span></div>` +
+    `<button class="btn small" type="button">Read flairs</button></div>` + (x.about ? `<div class="about">${esc(x.about)}</div>` : "") + `<div class="pickbox"></div>`;
+  const btn = row.querySelector("button");
+  btn.onclick = () => readFlairs(x.name, row.querySelector(".pickbox"), btn);
+  return row;
+}
+async function readFlairs(name, box, btn) {
+  btn.disabled = true;
+  box.innerHTML = `<p class="rsnote">Reading the newest 100 posts of r/${esc(name)}…</p>`;
+  const r = await askHelper({ flairs: name });
+  btn.disabled = false;
+  const p = helperProblem(r);
+  if (p === "ALLOW") { box.innerHTML = ""; return needAllow("rsMsg"); }
+  if (p) { box.innerHTML = `<p class="rsnote bad">${esc(p)}</p>`; return; }
+  name = r.name || name;
+  const t = pickTag(r.posts || []);
+  let choice = t.f ? { f: t.f } : { w: t.w };
+  box.innerHTML = "";
+  const info = document.createElement("p"); info.className = "rsnote";
+  info.textContent = !t.total ? "This community has no posts yet." :
+    t.f ? `Client flair: “${t.f}” (on ${t.fCount} of the newest ${t.total} posts). It's picked for you; click another flair if that one is the client one.`
+        : `No client flair here${t.wCount ? `, but clients write [${t.w}] in their titles (${t.wCount} of ${t.total} posts), so it searches that word` : `, so it searches the words “looking for”`}. If one of the flairs below is for client posts, click it.`;
+  box.appendChild(info);
+  const pick = document.createElement("div"); pick.className = "pick";
+  const opts = [...t.seen.map(([f, n]) => ({ f, label: `${f} · ${n} posts` })), { w: t.w, label: `no flair, search the word “${t.w}”` }];
+  const btns = opts.map(o => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "tag"; b.textContent = o.label;
+    b.onclick = () => { choice = o.f ? { f: o.f } : { w: o.w }; sync(); };
+    pick.appendChild(b); return [b, o];
+  });
+  const sync = () => btns.forEach(([b, o]) => b.setAttribute("aria-pressed", String(o.f ? choice.f === o.f : !choice.f)));
+  sync(); box.appendChild(pick);
+  const gigs = [...new Set(keywords.map(role))];
+  const gp = document.createElement("div"); gp.className = "gigpick";
+  gp.innerHTML = `<span class="meta">Use it for:</span><label><input type="checkbox" data-all checked> all my gigs</label>` +
+    gigs.map(g => `<label><input type="checkbox" value="${esc(g)}"> ${esc(g)}</label>`).join("");
+  const allBox = gp.querySelector("[data-all]"), gigBoxes = [...gp.querySelectorAll("input:not([data-all])")];
+  allBox.onchange = () => { if (allBox.checked) gigBoxes.forEach(i => i.checked = false); };
+  gigBoxes.forEach(i => i.onchange = () => { allBox.checked = !gigBoxes.some(j => j.checked); });
+  box.appendChild(gp);
+  const add = document.createElement("button"); add.type = "button"; add.className = "btn"; add.style.marginTop = "10px";
+  add.textContent = `Add r/${name}`;
+  add.onclick = () => {
+    const chosen = gigBoxes.filter(i => i.checked).map(i => i.value);
+    mySubs = mySubs.filter(m => m.s.toLowerCase() !== name.toLowerCase()).concat({ s: name, ...choice, gigs: chosen });
+    store.set("pf.mysubs", mySubs); SUBS = buildSubs(); renderAll();
+    rsMsg("rsMsg", `✓ Added r/${name} (${choice.f ? "flair “" + choice.f + "”" : "word “" + choice.w + "”"}). Its searches are in the Reddit card on “Find clients”.`, "ok");
+  };
+  box.appendChild(add);
+}
+function renderMySubs() {
+  const el = $("rsMine"); el.innerHTML = "";
+  if (!mySubs.length) { el.innerHTML = `<span class="empty">None yet. Search above to add one.</span>`; return; }
+  const wrap = document.createElement("div"); wrap.className = "mygigs";
+  mySubs.forEach((m, i) => {
+    const s = document.createElement("span"); s.className = "mygig";
+    s.innerHTML = `r/${esc(m.s)} · ${esc(m.f ? m.f : "“" + (m.w || "hiring") + "”")}${m.gigs && m.gigs.length ? " · " + esc(m.gigs.join(", ")) : ""}<button type="button" aria-label="Remove r/${esc(m.s)}">×</button>`;
+    s.querySelector("button").onclick = () => { mySubs.splice(i, 1); store.set("pf.mysubs", mySubs); SUBS = buildSubs(); renderAll(); };
+    wrap.appendChild(s);
+  });
+  el.appendChild(wrap);
+}
+// Check every built-in community's real client flair (one every 1.5 s, so Reddit doesn't block it).
+let checking = false;
+$("rsCheck").addEventListener("click", async () => {
+  if (checking) { checking = false; return; }
+  if (!helperReady("rsCheckMsg")) return;
+  checking = true; $("rsCheck").textContent = "Stop checking";
+  const list = REDDIT_SUBS.slice();
+  let done = 0, changed = 0, fails = 0, inRow = 0; const gone = [];
+  for (let i = 0; i < list.length && checking; i++) {
+    const x = list[i];
+    rsMsg("rsCheckMsg", `Checking r/${x.s}… (${done} of ${list.length} done)`);
+    const r = await askHelper({ flairs: x.s });
+    const p = helperProblem(r);
+    if (p === "ALLOW") { await needAllow("rsCheckMsg"); checking = false; break; }
+    if (r.error === 429) { rsMsg("rsCheckMsg", "Reddit asked to slow down. Waiting 1 minute…"); await rsSleep(60e3); i--; continue; }
+    const before = fixed(x);
+    if (isGone(r)) { flairFix[x.s.toLowerCase()] = { dead: true, reason: r.reason || "gone", at: Date.now() }; gone.push(x.s); inRow = 0; }
+    else if (p) { fails++; if (++inRow >= 5) { rsMsg("rsCheckMsg", p + " Stopped after 5 failures in a row.", "bad"); checking = false; break; } }
+    else {
+      const t = pickTag(r.posts || []);
+      flairFix[x.s.toLowerCase()] = { f: t.f, w: t.w, seen: t.seen.map(([f]) => f), at: Date.now() };
+      const after = fixed(x);
+      if (!before || tagOf(before) !== tagOf(after)) changed++;
+      inRow = 0;
+    }
+    done++;
+    store.set("pf.flairs", flairFix);
+    await rsSleep(1500);
+  }
+  checking = false; $("rsCheck").textContent = "Check all communities";
+  store.set("pf.flairsAt", Date.now());
+  SUBS = buildSubs(); renderAll();
+  if (done && inRow < 5) rsMsg("rsCheckMsg", `✓ Checked ${done} of ${list.length}. ${changed} got a corrected flair or word.` +
+    (gone.length ? ` Taken out (banned, private or gone): ${gone.map(s => "r/" + s).join(", ")}.` : " None were gone.") +
+    (fails ? ` ${fails} couldn't be read and keep their old search.` : ""), "ok");
+});
 
 // ---- trending gig on EACH site: count recent client posts per platform and gig ----
 const PLAT_OF = { reddit: "reddit", x: "x", twitter: "x", facebook: "fb", fb: "fb", bluesky: "bsky", bsky: "bsky" };
@@ -1165,6 +1393,7 @@ function renderFind() {
 }
 
 function renderSettings() {
+  renderMySubs();
   const my = $("mygigs"); my.innerHTML = "";
   keywords.forEach((k, i) => {
     const s = document.createElement("span"); s.className = "mygig";
