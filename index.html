@@ -419,10 +419,11 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
       <h2 class="step-title">Add a Reddit community</h2>
       <p class="sub">Post Finder already searches 113 hiring communities. Add any other one here. To see only client posts there, type the flair (tag) that client posts get in that community: open it on Reddit and look at the tag on a client's post, like <b>Hiring</b>, <b>Patron</b> or <b>Paid</b>. No client flair there? Leave it empty and it searches the word “hiring”.</p>
       <form class="add" id="rsForm" style="max-width:760px;flex-wrap:wrap">
-        <input type="text" id="rsName" placeholder="Community, like r/DnDcommissions" autocomplete="off" aria-label="Community name">
+        <input type="text" id="rsName" placeholder="A gig or community: pixel, Roblox, logo, r/HungryArtists…" autocomplete="off" aria-label="Gig or community name" aria-describedby="rsSugg">
         <input type="text" id="rsFlair" placeholder="Client flair, like Hiring (optional)" autocomplete="off" aria-label="Client flair">
         <button class="btn" type="submit">Add</button>
       </form>
+      <div class="ac" id="rsSugg" aria-live="polite"></div>
       <div class="rsgigs" id="rsGigs"></div>
       <p class="rsnote" id="rsMsg" role="status"></p>
       <p class="rsnote"><a id="rsLook" href="https://www.reddit.com/search/?q=hiring&amp;type=communities" target="pf-reddit">Find communities on Reddit ↗</a> (searches Reddit's communities for the word you typed)</p>
@@ -768,7 +769,7 @@ const REDDIT_SUBS = [
 // pf.mysubs = { s: name, f: the client flair you typed ("" = search the word "hiring"), gigs: [] = all your gigs }
 let mySubs = store.get("pf.mysubs", []);
 function buildSubs() {
-  const mine = mySubs.map(m => ({ s: m.s, f: m.f || undefined, w: m.f ? "" : (m.w || "hiring"), mine: true,
+  const mine = mySubs.map(m => ({ s: m.s, f: m.f || undefined, w: m.f ? "" : (m.w != null ? m.w : "hiring"), mine: true,
     fits: m.gigs && m.gigs.length ? { test: r => m.gigs.some(g => g.toLowerCase() === String(r).toLowerCase()) } : /./ }));
   const have = new Set(mine.map(x => x.s.toLowerCase()));
   return [...mine, ...REDDIT_SUBS.filter(x => !have.has(x.s.toLowerCase()))];
@@ -996,20 +997,54 @@ function renderRsGigs() {
   allBox.onchange = () => { if (allBox.checked) gigBoxes.forEach(i => i.checked = false); };
   gigBoxes.forEach(i => i.onchange = () => { allBox.checked = !gigBoxes.some(j => j.checked); });
 }
+// Suggestions while you type: communities whose name matches, then the right communities for the gig you typed
+// (with the flair or word their client posts use). Click one to add it.
+function rsSuggest(text) {
+  const raw = text.trim(), q = subName(raw).toLowerCase(), box = $("rsSugg");
+  box.innerHTML = "";
+  if (raw.length < 2) return;
+  const byName = q.length >= 2 ? REDDIT_SUBS.filter(x => x.s.toLowerCase().includes(q.replace(/\s+/g, ""))) : [];
+  const found = suggestGigs(raw, 3), gigs = [...new Set([raw, ...found])];
+  // The big general boards (r/forhire…) fit every gig: only when a real gig was recognised, and last.
+  const fitsGig = (x, g) => x.fits.test(g) && !(x.s === "DesignJobs" && /character|concept|game|level/i.test(g)) && (found.length || !x.fits.test("zzzz"));
+  const order = x => REDDIT_SUBS.indexOf(x);
+  const byGig = REDDIT_SUBS.filter(x => gigs.some(g => fitsGig(x, g))).sort((a, b) => order(a) - order(b));
+  const list = [...new Set([...byName, ...byGig])].slice(0, 30);
+  if (!list.length) { box.innerHTML = `<span class="aclab">No match. Type the community's exact name and its flair, then Add.</span>`; return; }
+  const lab = document.createElement("span"); lab.className = "aclab";
+  lab.textContent = found.length && byGig.length ? `For ${found.join(", ")}:` : "Communities:";
+  box.appendChild(lab);
+  list.forEach(x => {
+    const have = mySubs.some(m => m.s.toLowerCase() === x.s.toLowerCase());
+    const b = document.createElement("button"); b.type = "button";
+    b.textContent = (have ? "✓ " : "+ ") + `r/${x.s} · ${tagOf(x)}`;
+    b.title = `Add r/${x.s}: ${x.f ? "only posts with the flair “" + x.f + "”" : x.w ? "posts with “" + x.w + "”" : "every post (all are jobs)"}`;
+    if (have) b.classList.add("on");
+    else b.onclick = () => addSub({ s: x.s, f: x.f || "", w: x.f ? "" : x.w });
+    box.appendChild(b);
+  });
+}
+function addSub(entry) {
+  const gigs = [...$("rsGigs").querySelectorAll("input:not([data-all]):checked")].map(i => i.value);
+  mySubs = mySubs.filter(m => m.s.toLowerCase() !== entry.s.toLowerCase()).concat({ ...entry, gigs });
+  store.set("pf.mysubs", mySubs); SUBS = buildSubs(); renderAll();
+  rsSuggest($("rsName").value);
+  rsMsg(`✓ Added r/${entry.s}: ${entry.f ? "only posts with the flair “" + entry.f + "”" : entry.w ? "posts with “" + entry.w + "”" : "every post"}${gigs.length ? ", for " + gigs.join(", ") : ", for all your gigs"}. Its searches are in the Reddit card on “Find clients”.`, "ok");
+}
 $("rsName").addEventListener("input", () => {
   const q = subName($("rsName").value) || "hiring";
   $("rsLook").href = `https://www.reddit.com/search/?q=${enc(q)}&type=communities`;
+  rsSuggest($("rsName").value);
 });
 $("rsForm").addEventListener("submit", e => {
   e.preventDefault();
   const name = subName($("rsName").value);
-  if (!SUB_OK.test(name)) return rsMsg("Type the community's name, like r/DnDcommissions (letters, numbers and _ only).", "bad");
+  if (!SUB_OK.test(name)) return rsMsg("Type the community's name, like r/DnDcommissions (letters, numbers and _ only), or click a suggestion.", "bad");
   const flair = $("rsFlair").value.trim().replace(/^["“”']+|["“”']+$/g, "");
-  const gigs = [...$("rsGigs").querySelectorAll("input:not([data-all]):checked")].map(i => i.value);
-  mySubs = mySubs.filter(m => m.s.toLowerCase() !== name.toLowerCase()).concat({ s: name, f: flair, gigs });
-  store.set("pf.mysubs", mySubs); SUBS = buildSubs(); renderAll();
-  $("rsName").value = ""; $("rsFlair").value = "";
-  rsMsg(`✓ Added r/${name}: ${flair ? "only posts with the flair “" + flair + "”" : "posts with the word “hiring”"}${gigs.length ? ", for " + gigs.join(", ") : ", for all your gigs"}. Its searches are in the Reddit card on “Find clients”.`, "ok");
+  const known = REDDIT_SUBS.find(x => x.s.toLowerCase() === name.toLowerCase());
+  // A built-in community typed without a flair keeps its known flair / word.
+  addSub(flair || !known ? { s: known ? known.s : name, f: flair, w: flair ? "" : "hiring" } : { s: known.s, f: known.f || "", w: known.f ? "" : known.w });
+  $("rsName").value = ""; $("rsFlair").value = ""; $("rsSugg").innerHTML = "";
 });
 function renderMySubs() {
   const el = $("rsMine"); el.innerHTML = "";
@@ -1017,7 +1052,7 @@ function renderMySubs() {
   const wrap = document.createElement("div"); wrap.className = "mygigs";
   mySubs.forEach((m, i) => {
     const s = document.createElement("span"); s.className = "mygig";
-    s.innerHTML = `r/${esc(m.s)} · ${esc(m.f ? m.f : "“hiring”")}${m.gigs && m.gigs.length ? " · " + esc(m.gigs.join(", ")) : ""}<button type="button" aria-label="Remove r/${esc(m.s)}">×</button>`;
+    s.innerHTML = `r/${esc(m.s)} · ${esc(m.f ? m.f : m.w ? "“" + m.w + "”" : m.w === "" ? "every post" : "“hiring”")}${m.gigs && m.gigs.length ? " · " + esc(m.gigs.join(", ")) : ""}<button type="button" aria-label="Remove r/${esc(m.s)}">×</button>`;
     s.querySelector("button").onclick = () => { mySubs.splice(i, 1); store.set("pf.mysubs", mySubs); SUBS = buildSubs(); renderAll(); };
     wrap.appendChild(s);
   });
