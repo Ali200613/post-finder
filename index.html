@@ -328,7 +328,7 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
         <div>
           <span class="label">Posts from the last</span>
           <div class="seg" id="range" role="group" aria-label="Time range">
-            <button type="button" data-days="1">24 hours</button>
+            <button type="button" data-days="1">Today</button>
           </div>
         </div>
         <div id="openBox">
@@ -592,16 +592,14 @@ function xQuery(q) {
 function untilNext(d) { const x = new Date(d + "T00:00:00"); x.setDate(x.getDate() + 1); return ymd(x); }
 // X/Bluesky "until:" means "before this day", so including today needs tomorrow's date,
 // which looks wrong. When the end date is today, leave "until:" out: no end means "up to now".
-// "Last 24 hours": X and Bluesky read since:<date> in UTC (London time). A local date can be in their
-// future after midnight and show nothing, and X's exact-time form (since_time:) returned nothing.
-// So both get the UTC date of 24 hours ago: never in the future, always covers the last 24 hours
-// (it can show a few extra hours from that day; newest are at the top).
+// "Today": since:<today's date on this computer> (Karachi time for you), so the date changes every day at midnight.
+// One exception: X and Bluesky start a date at their own midnight (5 AM in Karachi), so from midnight to 5 AM
+// today's date is still in their future and would show NOTHING. In those hours it stays on yesterday's date.
 const ago24 = () => new Date(Date.now() - 864e5);
-const since24 = () => ago24().toISOString().slice(0, 10);
-// Bluesky takes an exact UTC time (since:2026-11-23T03:10:00Z), so it gets exactly the last 24 hours.
-const since24Exact = () => ago24().toISOString().slice(0, 19) + "Z";
-function dateTerms(plat) {
-  if (days === 1) return " since:" + (plat === "bsky" ? since24Exact() : since24());
+const sinceDay = () => { const local = ymd(new Date()), theirs = new Date().toISOString().slice(0, 10); return local <= theirs ? local : theirs; };
+const theirMidnight = () => new Date(Date.UTC(2000, 0, 1)).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+function dateTerms() {
+  if (days === 1) return " since:" + sinceDay();
   let s = "";
   const from = $("from").value, to = $("to").value, today = ymd(new Date());
   if (from) s += " since:" + from;
@@ -847,7 +845,7 @@ const CLEVER = [
   { label: "“human artist only, no AI”", q: `("no ai" OR "human artist" OR "real artist" OR "not ai") (commission OR hiring OR "looking for" OR paying)` },
   { label: "misspelled “comission”", q: `(comission OR commision OR comissions OR commisions OR c0mmission) (looking OR want OR need OR anyone)` },
 ];
-const spanText = () => days === 0 ? "your dates" : days === 1 ? "24 h" : days + " days";
+const spanText = () => days === 0 ? "your dates" : days === 1 ? "today" : days + " days";
 const HINT = {
   x: () => `newest first · ${spanText()}`,
   reddit: () => "communities for your gigs",
@@ -887,16 +885,16 @@ function platformCard(p, items, opts = {}) {
 
 // ---- date check: shows exactly which dates each site gets ----
 function renderDates() {
-  const t24 = d => d.toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
-  const s = since24(), sNice = new Date(s + "T00:00:00Z").toLocaleDateString([], { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-  const now = new Date(), fromT = ago24().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  const todayNice = now.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
-  // Today's date first, so nobody thinks the search is for yesterday.
-  $("dateLine").textContent = `✓ Today, ${todayNice} · posts from the last 24 hours (since yesterday ${fromT})`;
+  const s = sinceDay(), today = ymd(new Date());
+  const nice = d => new Date(d + "T00:00:00").toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+  const early = s !== today;
+  $("dateLine").textContent = early
+    ? `✓ Today, ${nice(today)} · before ${theirMidnight()} it searches from yesterday, ${nice(s)} (today's posts appear at the top)`
+    : `✓ Today, ${nice(today)} · posts from today: since:${s}`;
   $("dateDetail").innerHTML =
-    `<div><b>Bluesky</b> gets: <code>since:${esc(since24Exact())}</code> = exactly the last 24 hours (the time is updated each time you click).</div>` +
-    `<div><b>X / Twitter</b> gets: <code>since:${esc(s)}</code>. X only takes a whole date, counted in UTC (London time), so its search starts at ` +
-    `${esc(t24(new Date(s + "T00:00:00Z")))} your time. That always covers the last 24 hours, plus up to 24 hours more; between midnight and ${esc(new Date(Date.UTC(2000, 0, 1)).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))} your time the date looks 2 days old, which is normal. Newest posts are at the top.</div>` +
+    `<div><b>X / Twitter</b> and <b>Bluesky</b> get: <code>since:${esc(s)}</code> = ${early ? "yesterday" : "today"}, ${esc(nice(s))}, by your computer's date. It changes by itself every day.` +
+    (early ? ` From midnight to ${esc(theirMidnight())} it uses yesterday's date, because X and Bluesky start a new day at ${esc(theirMidnight())} your time, and today's date would show no posts until then.` : "") +
+    ` Newest posts are at the top.</div>` +
     `<div><b>Reddit</b> gets: <code>past week, newest first</code> (hiring subreddits get only a few client posts a day, so a 24-hour Reddit search is often empty; check the time on each post)</div>` +
     `<div><b>Facebook</b> gets: <code>Recent posts</code> (newest first). Facebook links can't carry exact dates.</div>`;
 }
@@ -975,18 +973,19 @@ function pingHelper() {
   } catch { /* not installed */ }
 }
 // Dates must be fresh at the moment of the click, even if this tab was left open for hours or days.
-// 1) Bluesky links carry an exact time: update it to "24 hours before now" right before the link opens.
-const BSKY_SINCE = /since%3A\d{4}-\d{2}-\d{2}T\d{2}%3A\d{2}%3A\d{2}Z/;
+// 1) The link being clicked gets today's date right before it opens (even after the computer slept).
+const SINCE_IN_URL = /since%3A\d{4}-\d{2}-\d{2}/;
 function freshenLink(e) {
   if (days !== 1) return;
-  const a = e.target instanceof Element ? e.target.closest('a[href*="bsky.app/search"]') : null;
-  if (a && BSKY_SINCE.test(a.href)) a.href = a.href.replace(BSKY_SINCE, enc("since:" + since24Exact()));
+  const a = e.target instanceof Element ? e.target.closest('a[href*="x.com/search"], a[href*="bsky.app/search"]') : null;
+  if (a && SINCE_IN_URL.test(a.href)) a.href = a.href.replace(SINCE_IN_URL, enc("since:" + sinceDay()));
+  setTimeout(refreshDates, 0);
 }
 document.addEventListener("pointerdown", freshenLink, true);
 document.addEventListener("click", freshenLink, true);
-// 2) X's date and the day ranges: rebuild every link when the date they use has changed.
+// 2) Every other link and the date line: rebuilt as soon as the date changes (checked every minute).
 let builtFor = "";
-const dateKey = () => since24() + "|" + ymd(new Date());
+const dateKey = () => sinceDay() + "|" + ymd(new Date());
 function refreshDates() {
   if (dateKey() === builtFor) return;
   if (days >= 1) setDays(days);
