@@ -259,6 +259,13 @@ ul.tips { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .rsnote { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
 .rsnote.bad { color: var(--pink); font-weight: 700; }
 .rsnote.ok { color: var(--green, #1a7f37); font-weight: 700; }
+.ac a.subchip { font: 700 14px/1 var(--body); color: var(--ink); background: var(--card); border: 2px solid var(--reddit); border-radius: 999px; padding: 8px 12px; text-decoration: none; display: inline-flex; gap: 6px; align-items: baseline; }
+.ac a.subchip small { font: 400 12px/1 var(--mono); color: var(--muted); }
+.ac a.subchip:hover { background: var(--reddit); color: #fff; }
+.ac a.subchip:hover small { color: #fff; }
+.subwrap { display: inline-flex; align-items: center; }
+.subx { border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 0 4px; }
+.subx:hover { color: var(--pink); }
 .rsgigs { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; font-size: 14px; }
 .rsgigs .meta { color: var(--muted); }
 .add-s.on { opacity: .5; cursor: default; border-style: solid; }
@@ -312,6 +319,7 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
         <button class="btn ghost small" type="button" id="oneBtn">Just one</button>
       </div>
       <div class="gigs" id="gigs"></div>
+      <div class="ac subrow" id="subRow" hidden></div>
       <div class="ac" id="hotRow"></div>
       <div class="plathot" id="platHot"></div>
       <form class="add quick" id="quickForm">
@@ -999,17 +1007,30 @@ function renderRsGigs() {
 }
 // Suggestions while you type: communities whose name matches, then the right communities for the gig you typed
 // (with the flair or word their client posts use). Click one to add it.
+// Communities for what you typed: by name first (typos OK: "gameclassied" finds r/gameDevClassifieds),
+// then the right communities for the gig you typed, niche first, big general boards last.
+function matchSubs(raw, pool) {
+  const q = subName(raw).toLowerCase().replace(/[^a-z0-9]/g, "");
+  const norm = x => x.s.toLowerCase().replace(/_/g, "");
+  const inOrder = (a, b) => { let i = 0; for (const ch of b) if (ch === a[i]) i++; return i === a.length; };
+  const byName = q.length < 2 ? [] : [
+    ...pool.filter(x => norm(x).startsWith(q)),
+    ...pool.filter(x => norm(x).includes(q)),
+    ...(q.length >= 5 ? pool.filter(x => inOrder(q, norm(x))) : []),
+  ];
+  const found = suggestGigs(raw, 3), gigs = [...new Set([raw, ...found])];
+  // The big general boards (r/forhire…) fit every gig: only when a real gig was recognised.
+  const fitsGig = (x, g) => x.fits.test(g) && !(x.s === "DesignJobs" && /character|concept|game|level/i.test(g)) && (found.length || !x.fits.test("zzzz"));
+  const general = x => x.fits.test("zzzz");
+  const byGig = pool.filter(x => gigs.some(g => fitsGig(x, g))).sort((a, b) => general(a) - general(b));
+  return { list: [...new Set([...byName, ...byGig])], found, byGig };
+}
 function rsSuggest(text) {
-  const raw = text.trim(), q = subName(raw).toLowerCase(), box = $("rsSugg");
+  const raw = text.trim(), box = $("rsSugg");
   box.innerHTML = "";
   if (raw.length < 2) return;
-  const byName = q.length >= 2 ? REDDIT_SUBS.filter(x => x.s.toLowerCase().includes(q.replace(/\s+/g, ""))) : [];
-  const found = suggestGigs(raw, 3), gigs = [...new Set([raw, ...found])];
-  // The big general boards (r/forhire…) fit every gig: only when a real gig was recognised, and last.
-  const fitsGig = (x, g) => x.fits.test(g) && !(x.s === "DesignJobs" && /character|concept|game|level/i.test(g)) && (found.length || !x.fits.test("zzzz"));
-  const order = x => REDDIT_SUBS.indexOf(x);
-  const byGig = REDDIT_SUBS.filter(x => gigs.some(g => fitsGig(x, g))).sort((a, b) => order(a) - order(b));
-  const list = [...new Set([...byName, ...byGig])].slice(0, 30);
+  const { list: all, found, byGig } = matchSubs(raw, REDDIT_SUBS);
+  const list = all.slice(0, 30);
   if (!list.length) { box.innerHTML = `<span class="aclab">No match. Type the community's exact name and its flair, then Add.</span>`; return; }
   const lab = document.createElement("span"); lab.className = "aclab";
   lab.textContent = found.length && byGig.length ? `For ${found.join(", ")}:` : "Communities:";
@@ -1046,6 +1067,51 @@ $("rsForm").addEventListener("submit", e => {
   addSub(flair || !known ? { s: known ? known.s : name, f: flair, w: flair ? "" : "hiring" } : { s: known.s, f: known.f || "", w: known.f ? "" : known.w });
   $("rsName").value = ""; $("rsFlair").value = ""; $("rsSugg").innerHTML = "";
 });
+// ---- Step 1: Reddit communities you can click, like gigs ----
+// Typing in step 1 also shows matching communities. Clicking one opens its CLIENT posts (its flair or client word),
+// newest first, and keeps it in "Your Reddit communities" under your gigs.
+let subRow = store.get("pf.subrow", []);
+function subChip(x, onOpen) {
+  const a = link("subchip", "reddit", subUrl(x, ""), `r/${esc(x.s)} <small>${esc(tagOf(x))}</small>`);
+  a.title = `r/${x.s}: newest ${x.f ? "posts with the flair “" + x.f + "”" : x.w ? "posts with “" + x.w + "”" : "posts"} (past week)`;
+  if (onOpen) a.addEventListener("click", onOpen);
+  return a;
+}
+function keepSub(name) {
+  if (subRow.some(s => s.toLowerCase() === name.toLowerCase())) return;
+  subRow = [...subRow, name]; store.set("pf.subrow", subRow); renderSubRow();
+}
+function drawSubChips(v, box) {
+  if (v.length < 2) return;
+  const { list } = matchSubs(v, SUBS);
+  if (!list.length) return;
+  const first = box.querySelector(".aclab");
+  if (first && /^Not in the list/.test(first.textContent)) first.remove();
+  const lab = document.createElement("span"); lab.className = "aclab"; lab.style.flexBasis = "100%"; lab.style.marginTop = "6px";
+  lab.textContent = "Reddit communities: click to see their client posts";
+  box.appendChild(lab);
+  list.slice(0, 14).forEach(x => box.appendChild(subChip(x, () => keepSub(x.s))));
+}
+function renderSubRow() {
+  const row = $("subRow"); row.innerHTML = "";
+  const names = [...new Set([...mySubs.map(m => m.s), ...subRow].map(s => s.toLowerCase()))];
+  const subs = names.map(n => SUBS.find(x => x.s.toLowerCase() === n)).filter(Boolean);
+  if (!subs.length) { row.hidden = true; return; }
+  row.hidden = false;
+  const lab = document.createElement("span"); lab.className = "aclab"; lab.textContent = "Your Reddit communities:";
+  row.appendChild(lab);
+  subs.forEach(x => {
+    const w = document.createElement("span"); w.className = "subwrap";
+    w.appendChild(subChip(x));
+    if (subRow.some(s => s.toLowerCase() === x.s.toLowerCase())) {
+      const del = document.createElement("button"); del.type = "button"; del.className = "subx"; del.textContent = "×";
+      del.setAttribute("aria-label", `Remove r/${x.s}`);
+      del.onclick = () => { subRow = subRow.filter(s => s.toLowerCase() !== x.s.toLowerCase()); store.set("pf.subrow", subRow); renderSubRow(); };
+      w.appendChild(del);
+    }
+    row.appendChild(w);
+  });
+}
 function renderMySubs() {
   const el = $("rsMine"); el.innerHTML = "";
   if (!mySubs.length) { el.innerHTML = `<span class="empty">None yet.</span>`; return; }
@@ -1144,6 +1210,7 @@ function renderFind() {
     };
     gigs.appendChild(b);
   });
+  renderSubRow();
   renderPlatTrend($("platHot"));
   // gigs with 2+ client posts in the last 24 hours
   const hr = $("hotRow"); hr.innerHTML = "";
@@ -1362,6 +1429,7 @@ function wireAutocomplete(formId, inputId, boxId, select) {
       };
       box.appendChild(all);
     }
+    if (select) drawSubChips(v, box);
   }
   input.addEventListener("input", draw);
   $(formId).addEventListener("submit", e => {
