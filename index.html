@@ -425,7 +425,7 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
     </div>
     <div class="panel" id="rsubs">
       <h2 class="step-title">Add a Reddit community</h2>
-      <p class="sub">Post Finder already searches 113 hiring communities. Add any other one here. To see only client posts there, type the flair (tag) that client posts get in that community: open it on Reddit and look at the tag on a client's post, like <b>Hiring</b>, <b>Patron</b> or <b>Paid</b>. No client flair there? Leave it empty and it searches the word “hiring”.</p>
+      <p class="sub">Post Finder already searches 136 hiring communities. Add any other one here. To see only client posts there, type the flair (tag) that client posts get in that community: open it on Reddit and look at the tag on a client's post, like <b>Hiring</b>, <b>Patron</b> or <b>Paid</b>. No client flair there? Leave it empty and it searches the word “hiring”.</p>
       <form class="add" id="rsForm" style="max-width:760px;flex-wrap:wrap">
         <input type="text" id="rsName" placeholder="A gig or community: pixel, Roblox, logo, r/HungryArtists…" autocomplete="off" aria-label="Gig or community name" aria-describedby="rsSugg">
         <input type="text" id="rsFlair" placeholder="Client flair, like Hiring (optional)" autocomplete="off" aria-label="Client flair">
@@ -654,8 +654,10 @@ const REDDIT_SUBS = [
   { s: "FurryCommissions", w: "looking for", fits: /furry/i },
   { s: "furry", w: "looking for", fits: /furry/i },
   { s: "OriginalCharacter", w: "looking for", fits: /character|anime|chibi|furry|reference/i },
+  { s: "characterdesign", w: "looking for", fits: /character|concept/i },
   { s: "characterdrawing", w: "paid", fits: /character|anime|chibi|fan artist/i },
   { s: "drawforme", w: "paid", fits: /artist|portrait|character|anime|chibi|cartoon|caricature/i },
+  { s: "ArtRequest", w: "paid", fits: /^artist$|illustrat|portrait|character|anime|chibi|cartoon|fan artist/i },
   { s: "fanart", w: "looking for", fits: /fan artist|anime|character/i },
   // maps, tabletop, worldbuilding
   { s: "FantasyMaps", w: "looking for", fits: /map/i },
@@ -663,19 +665,26 @@ const REDDIT_SUBS = [
   { s: "battlemaps", w: "looking for", fits: /map/i },
   { s: "worldbuilding", w: "looking for", fits: /map|concept|character designer/i },
   { s: "tabletopgamedesign", w: "looking for", fits: /^artist$|^illustrator$|character designer|concept|game designer|game artist|icon/i },
+  { s: "BoardgameDesign", w: "looking for", fits: /^artist$|^illustrator$|character designer|concept|game designer|game artist|icon/i },
+  { s: "tcgdesign", w: "looking for", fits: /^artist$|^illustrator$|character designer|concept|game designer|game artist|icon/i },
+  { s: "TTRPG", w: "looking for", fits: /^artist$|^illustrator$|character designer|map|portrait/i },
+  { s: "dndcommissions", w: "looking for", fits: /^artist$|^illustrator$|character|portrait|map|concept|fantasy/i },
   // comics, books, visual novels, album covers
   { s: "ComicBookCollabs", w: "paid", fits: COMIC },
   { s: "webcomics", w: "hiring", fits: COMIC },
+  { s: "webtoon", w: "looking for", fits: /webtoon|comic|manga|colorist/i },
   { s: "childrensbooks", w: "looking for", fits: /children|kid|picture book/i },
   { s: "selfpublish", w: "looking for", fits: BOOK },
   { s: "selfpublishing", w: "looking for", fits: BOOK },
   { s: "KDP", w: "looking for", fits: BOOK },
   { s: "Authors", w: "looking for", fits: BOOK },
   { s: "fantasywriters", w: "looking for", fits: /book|cover|map|character/i },
+  { s: "BookCovers", w: "looking for", fits: /book cover|cover artist|book illustrator/i },
   { s: "vndevs", w: "paid", fits: /anime|character|sprite|background artist|2d game|game artist/i },
   { s: "renpy", w: "paid", fits: /anime|character|sprite|background artist|2d game|game artist/i },
   { s: "makinghiphop", w: "looking for", fits: /album|cover|lyric|music video|logo/i },
   { s: "WeAreTheMusicMakers", w: "looking for", fits: /album|lyric/i },
+  { s: "coverart", w: "looking for", fits: /album|cover artist/i },
   // Roblox, Minecraft, Discord
   { s: "HiddenDevs", w: "hiring", fits: /roblox/i },
   { s: "robloxgamedev", w: "hiring", fits: /roblox/i },
@@ -691,6 +700,9 @@ const REDDIT_SUBS = [
   { s: "blender", w: "hiring", fits: /3d|prop|texture|environment/i },
   { s: "ZBrush", w: "hiring", fits: /3d character|3d modeler|3d artist/i },
   // animation & motion
+  { s: "AnimationJobs", w: "hiring", fits: /animat|rigger|motion|storyboard/i },
+  { s: "2DAnimation", w: "hiring", fits: /2d animat|^animator$|frame by frame|character animator|anime animator|cartoon/i },
+  { s: "Animators", w: "hiring", fits: /animat/i },
   { s: "animation", w: "hiring", fits: /animat/i },
   { s: "motiongraphics", w: "hiring", fits: /motion|explainer|logo animator|lyric/i },
   { s: "MotionDesign", w: "hiring", fits: /motion|explainer|logo animator/i },
@@ -716,6 +728,8 @@ const REDDIT_SUBS = [
   { s: "unrealengine", w: "hiring", fits: /unreal|environment|3d/i },
   { s: "godot", w: "hiring", fits: /godot/i },
   { s: "RPGMaker", w: "paid", fits: /pixel|sprite|game artist|2d game|game developer/i },
+  { s: "GameArt", w: "hiring", fits: /game artist|2d game|pixel|sprite|concept|environment|prop|3d|background artist|character designer/i },
+  { s: "gameCapsule", w: "looking for", fits: /game artist|2d game|concept|^illustrator$|^artist$|key art/i },
   // apps, code, web platforms
   { s: "AppIdeas", w: "looking for", fits: APP },
   { s: "AppBusiness", w: "looking for", fits: APP },
@@ -734,11 +748,15 @@ const REDDIT_SUBS = [
   { s: "webflow", w: "looking for", fits: /webflow/i },
   { s: "WIX", w: "looking for", fits: /wix/i },
   { s: "squarespace", w: "looking for", fits: /web designer|website designer/i },
+  { s: "framer", w: "looking for", fits: /web designer|website designer|landing|webflow/i },
+  { s: "website", w: "looking for", fits: /website|web designer|web developer|landing|wordpress|shopify|wix/i },
   // design
   { s: "DesignJobs", f: "Hiring", fits: DESIGN },
   { s: "PhotoshopRequest", w: "paid", fits: /graphic|thumbnail|poster|flyer|banner|logo|digital painter|matte/i },
   { s: "logodesign", w: "hiring", fits: /logo|brand/i },
   { s: "branding", w: "looking for", fits: /logo|brand|packaging/i },
+  { s: "posterdesign", w: "looking for", fits: /poster|flyer|banner|graphic designer/i },
+  { s: "uidesign", w: "hiring", fits: /ui\/ux|ui designer|ux designer|app designer|web designer|landing/i },
   // merch & shops
   { s: "streetwearstartup", w: "looking for", fits: MERCH },
   { s: "EtsySellers", w: "looking for", fits: MERCH },
@@ -754,6 +772,8 @@ const REDDIT_SUBS = [
   { s: "commissions", w: "looking for", fits: any(ART, VT) },
   { s: "starvingartists", w: "hiring", fits: any(ART, COMIC, BOOK, VT) },
   { s: "artstore", w: "looking for", fits: any(ART, VT) },
+  { s: "artistforhire", w: "hiring", fits: any(ART, COMIC, BOOK, VT) },
+  { s: "Artistsforhire", w: "hiring", fits: any(ART, COMIC, BOOK, VT) },
   // general hiring boards (every gig)
   { s: "forhire", f: "Hiring", fits: /./ },
   { s: "freelance_forhire", w: "hiring", fits: /./ },
@@ -763,6 +783,9 @@ const REDDIT_SUBS = [
   { s: "jobbit", w: "hiring", fits: DEV },
   { s: "ForHireDevs", w: "hiring", fits: DEV },
   { s: "CodingJobs", w: "hiring", fits: DEV },
+  { s: "devjobs", w: "hiring", fits: DEV },
+  { s: "DevsForHire", w: "hiring", fits: DEV },
+  { s: "hiredev", w: "hiring", fits: DEV },
   { s: "hiring", w: "hiring", fits: any(DESIGN, DEV, VIDEO) },
   { s: "WorkOnline", w: "hiring", fits: any(DESIGN, DEV, VIDEO) },
   { s: "RemoteJobs", w: "hiring", fits: DEV },
