@@ -446,7 +446,7 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
     <input type="hidden" id="from"><input type="hidden" id="to">
     <div class="panel" id="fbgroups">
       <h2 class="step-title">Your Facebook groups</h2>
-      <p class="sub">Add the Facebook groups where clients post (groups you've joined work best). Then the Facebook searches on “Find clients” can open <b>inside that group</b>: pick the group at the top of the Facebook card and every keyword searches only there.</p>
+      <p class="sub">Post Finder already knows 10 public design and developer job groups. Add the Facebook groups where your clients post (groups you've joined work best). Then the Facebook searches on “Find clients” can open <b>inside that group</b>: pick the group at the top of the Facebook card and every keyword searches only there.</p>
       <form class="add" id="fbForm" style="max-width:760px;flex-wrap:wrap">
         <input type="text" id="fbLink" placeholder="Group link, like facebook.com/groups/123456789" autocomplete="off" aria-label="Facebook group link">
         <input type="text" id="fbName" placeholder="Short name (optional)" autocomplete="off" aria-label="Group name">
@@ -1159,7 +1159,25 @@ function renderSubRow() {
 // pf.fbgroup  = the group picked in the Facebook card ("" = all of Facebook)
 let fbGroups = store.get("pf.fbgroups", []);
 let fbPick = store.get("pf.fbgroup", "");
-const fbGroupsFor = roles => fbGroups.filter(g => !g.gigs || !g.gigs.length || g.gigs.some(x => roles.some(r => r.toLowerCase() === x.toLowerCase())));
+// Built-in public groups where clients post jobs (links from Creative Market's and Legiit's group lists, 2024).
+const FB_GROUPS = [
+  { id: "128594741212108", name: "Logo Design", fits: /logo|brand/i },
+  { id: "205756059526207", name: "UI/UX Designers", fits: /ui\/ux|ui designer|ux designer|app designer|web designer|website designer|landing/i },
+  { id: "graphicdesignerjobforall", name: "Graphic Design jobs & projects", fits: DESIGN },
+  { id: "graphicdesignerjobs", name: "Graphic Designer Jobs", fits: DESIGN },
+  { id: "214774848697200", name: "Graphic Designers All Over the World", fits: DESIGN },
+  { id: "556739801135588", name: "Jobs for Front-End Developers", fits: /frontend|react|next\.js|javascript|web developer|website developer|full stack|web designer|website designer|landing|wordpress|shopify|webflow|wix/i },
+  { id: "539394463145974", name: "Remote Jobs & Projects for Developers", fits: DEV },
+  { id: "remotestartupjobs", name: "Remote Tech Jobs", fits: DEV },
+  { id: "remotework.digitalnomads", name: "Remote Work & Jobs", fits: any(DESIGN, DEV, /video|editor/i) },
+  { id: "legiit", name: "Legiit freelancers", fits: any(DESIGN, DEV, /video|editor/i) },
+];
+// Your groups first (only for the gigs you chose), then the built-in groups that fit the gigs on screen.
+const fbGroupsFor = roles => {
+  const mine = fbGroups.filter(g => !g.gigs || !g.gigs.length || g.gigs.some(x => roles.some(r => r.toLowerCase() === x.toLowerCase())));
+  const have = new Set(mine.map(g => String(g.id).toLowerCase()));
+  return [...mine, ...FB_GROUPS.filter(g => !have.has(g.id.toLowerCase()) && roles.some(r => g.fits.test(r)))];
+};
 let fbActive = null;   // the picked group, if it fits the gigs on screen
 const fbGroupUrl = g => `https://www.facebook.com/groups/${encodeURIComponent(g.id)}/`;
 const fbNewestUrl = g => fbGroupUrl(g) + "?sorting_setting=CHRONOLOGICAL";
