@@ -266,6 +266,10 @@ ul.tips { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .subwrap { display: inline-flex; align-items: center; }
 .subx { border: 0; background: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 0 4px; }
 .subx:hover { color: var(--pink); }
+.fbbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 0 12px 10px; }
+.fbpick { font: 700 13px/1 var(--body); color: var(--ink); background: transparent; border: 2px solid var(--line); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+.fbpick[aria-pressed="true"] { background: var(--fb, #1877f2); border-color: var(--fb, #1877f2); color: #fff; }
+.fbbar a.fbnew, .fbbar a.fbadd { font-size: 13px; color: var(--ink); font-weight: 700; }
 .rsgigs { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; font-size: 14px; }
 .rsgigs .meta { color: var(--muted); }
 .add-s.on { opacity: .5; cursor: default; border-style: solid; }
@@ -440,6 +444,20 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
     </div>
     <!-- Searches are always the last 24 hours; these hold the dates for the code. -->
     <input type="hidden" id="from"><input type="hidden" id="to">
+    <div class="panel" id="fbgroups">
+      <h2 class="step-title">Your Facebook groups</h2>
+      <p class="sub">Add the Facebook groups where clients post (groups you've joined work best). Then the Facebook searches on “Find clients” can open <b>inside that group</b>: pick the group at the top of the Facebook card and every keyword searches only there.</p>
+      <form class="add" id="fbForm" style="max-width:760px;flex-wrap:wrap">
+        <input type="text" id="fbLink" placeholder="Group link, like facebook.com/groups/123456789" autocomplete="off" aria-label="Facebook group link">
+        <input type="text" id="fbName" placeholder="Short name (optional)" autocomplete="off" aria-label="Group name">
+        <button class="btn" type="submit">Add</button>
+      </form>
+      <div class="rsgigs" id="fbGigs"></div>
+      <p class="rsnote" id="fbMsg" role="status"></p>
+      <p class="rsnote">To get a group's link: open the group on Facebook and copy the address from the top of Chrome.</p>
+      <span class="label" style="margin-top:18px">Groups you added</span>
+      <div id="fbMine"></div>
+    </div>
     <div class="panel">
       <h2 class="step-title">Reset</h2>
       <p class="sub">Go back to the starting gigs and settings on this browser.</p>
@@ -834,7 +852,7 @@ const URL_FOR = {
   },
   // Facebook search can't take dates, but this switches on its "Recent posts" filter (newest first).
   // No extra words added: Facebook search gets worse with every word.
-  fb: q => `https://www.facebook.com/search/posts/?q=${enc(q)}&filters=${enc(FB_RECENT)}`,
+  fb: q => fbActive ? `${fbGroupUrl(fbActive)}search/?q=${enc(q)}` : `https://www.facebook.com/search/posts/?q=${enc(q)}&filters=${enc(FB_RECENT)}`,
   bsky: q => `https://bsky.app/search?q=${enc(q + dateTerms("bsky"))}`,
 };
 const TEMPLATES = {
@@ -890,7 +908,7 @@ const spanText = () => days === 0 ? "your dates" : days === 1 ? "today" : days +
 const HINT = {
   x: () => `newest first · ${spanText()}`,
   reddit: () => "communities for your gigs",
-  fb: () => "recent posts first",
+  fb: () => fbActive ? "inside " + fbActive.name : "recent posts first",
   bsky: () => `newest · ${spanText()}`,
 };
 
@@ -904,8 +922,8 @@ function platformCard(p, items, opts = {}) {
   card.innerHTML = `<div class="phead"><span class="pdot"></span><h3>${esc(opts.title || PLAT[p].name)}</h3><span class="hint">${esc(opts.hint || HINT[p]())}</span></div><ul class="plinks"></ul>`;
   const ul = card.querySelector("ul");
   const key = opts.key || p;
-  const show = opts.wide || openMore.has(key) ? items : items.slice(0, VISIBLE);
-  show.forEach(t => { const li = document.createElement("li"); li.appendChild(link("search", p, URL_FOR[p](t.q, t.opt), esc(t.label))); ul.appendChild(li); });
+  const vis = opts.wide || openMore.has(key) ? items : items.slice(0, VISIBLE);
+  vis.forEach(t => { const li = document.createElement("li"); li.appendChild(link("search", p, URL_FOR[p](t.q, t.opt), esc(t.label))); ul.appendChild(li); });
   if (!opts.wide && items.length > VISIBLE) {
     const b = document.createElement("button"); b.type = "button"; b.className = "more";
     b.textContent = openMore.has(key) ? "Show fewer" : `Show ${items.length - VISIBLE} more searches`;
@@ -913,6 +931,7 @@ function platformCard(p, items, opts = {}) {
     card.appendChild(b);
   }
   if (opts.note) { const n = document.createElement("p"); n.className = "pnote"; n.textContent = opts.note; card.appendChild(n); }
+  if (opts.groups) fbGroupBar(card, opts.groups);
   if (opts.subs) {
     const d = document.createElement("div"); d.className = "subs";
     // Each chip: that subreddit's newest posts with its client flair only.
@@ -1135,6 +1154,79 @@ function renderSubRow() {
     row.appendChild(w);
   });
 }
+// ---- Facebook groups: your groups, and which one the Facebook searches open in ----
+// pf.fbgroups = [{ id: group number or name from its link, name, gigs: [] = all your gigs }]
+// pf.fbgroup  = the group picked in the Facebook card ("" = all of Facebook)
+let fbGroups = store.get("pf.fbgroups", []);
+let fbPick = store.get("pf.fbgroup", "");
+const fbGroupsFor = roles => fbGroups.filter(g => !g.gigs || !g.gigs.length || g.gigs.some(x => roles.some(r => r.toLowerCase() === x.toLowerCase())));
+let fbActive = null;   // the picked group, if it fits the gigs on screen
+const fbGroupUrl = g => `https://www.facebook.com/groups/${encodeURIComponent(g.id)}/`;
+const fbNewestUrl = g => fbGroupUrl(g) + "?sorting_setting=CHRONOLOGICAL";
+function fbGroupBar(card, roles) {
+  const groups = fbGroupsFor(roles);
+  const bar = document.createElement("div"); bar.className = "fbbar";
+  if (!groups.length) {
+    bar.innerHTML = `<a href="#settings" class="fbadd">+ Add your Facebook groups, so these searches can open inside a group</a>`;
+  } else {
+    bar.innerHTML = `<span class="aclab">Search in:</span>`;
+    const pick = id => { fbPick = id; store.set("pf.fbgroup", id); renderFind(); };
+    const all = document.createElement("button"); all.type = "button"; all.className = "fbpick"; all.textContent = "All of Facebook";
+    all.setAttribute("aria-pressed", String(!fbActive)); all.onclick = () => pick("");
+    bar.appendChild(all);
+    groups.forEach(g => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "fbpick"; b.textContent = g.name;
+      b.setAttribute("aria-pressed", String(!!fbActive && fbActive.id === g.id)); b.onclick = () => pick(g.id);
+      bar.appendChild(b);
+    });
+    if (fbActive) bar.appendChild(link("fbnew", "fb", fbNewestUrl(fbActive), `Open ${esc(fbActive.name)}: newest posts ↗`));
+    const add = document.createElement("a"); add.href = "#settings"; add.className = "fbadd"; add.textContent = "+ Add a group"; bar.appendChild(add);
+  }
+  bar.querySelectorAll("a.fbadd").forEach(a => a.onclick = e => { e.preventDefault(); show("settings"); try { history.replaceState(null, "", "#settings"); } catch {} $("fbgroups").scrollIntoView({ block: "start" }); });
+  card.insertBefore(bar, card.querySelector("ul"));
+}
+// "facebook.com/groups/123456789/?ref=share" -> "123456789"; "facebook.com/groups/artistsforhire" -> "artistsforhire"
+function fbGroupId(v) {
+  const s = v.trim();
+  const m = /facebook\.com\/groups\/([A-Za-z0-9._-]+)/i.exec(s);
+  if (m) return m[1];
+  return /^[A-Za-z0-9._-]{3,}$/.test(s) ? s : "";
+}
+function fbMsg(text, kind) { const p = $("fbMsg"); p.textContent = text; p.className = "rsnote" + (kind ? " " + kind : ""); }
+function renderFbGigs() {
+  const gigs = [...new Set(keywords.map(role))];
+  const gp = $("fbGigs");
+  gp.innerHTML = `<span class="meta">Use it for:</span><label><input type="checkbox" data-all checked> all my gigs</label>` +
+    gigs.map(g => `<label><input type="checkbox" value="${esc(g)}"> ${esc(g)}</label>`).join("");
+  const allBox = gp.querySelector("[data-all]"), boxes = [...gp.querySelectorAll("input:not([data-all])")];
+  allBox.onchange = () => { if (allBox.checked) boxes.forEach(i => i.checked = false); };
+  boxes.forEach(i => i.onchange = () => { allBox.checked = !boxes.some(j => j.checked); });
+}
+$("fbForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const id = fbGroupId($("fbLink").value);
+  if (!id) return fbMsg("Paste the group's link, like facebook.com/groups/123456789.", "bad");
+  const name = ($("fbName").value.trim() || (/^\d+$/.test(id) ? "Group " + id.slice(-4) : id)).slice(0, 40);
+  const gigs = [...$("fbGigs").querySelectorAll("input:not([data-all]):checked")].map(i => i.value);
+  fbGroups = fbGroups.filter(g => g.id !== id).concat({ id, name, gigs });
+  store.set("pf.fbgroups", fbGroups);
+  if (!fbPick) { fbPick = id; store.set("pf.fbgroup", id); }
+  $("fbLink").value = ""; $("fbName").value = "";
+  renderAll();
+  fbMsg(`✓ Added “${name}”. On “Find clients”, pick it at the top of the Facebook card and every Facebook keyword searches inside it.`, "ok");
+});
+function renderFbMine() {
+  const el = $("fbMine"); el.innerHTML = "";
+  if (!fbGroups.length) { el.innerHTML = `<span class="empty">None yet.</span>`; return; }
+  const wrap = document.createElement("div"); wrap.className = "mygigs";
+  fbGroups.forEach((g, i) => {
+    const s = document.createElement("span"); s.className = "mygig";
+    s.innerHTML = `${esc(g.name)}${g.gigs && g.gigs.length ? " · " + esc(g.gigs.join(", ")) : ""}<button type="button" aria-label="Remove ${esc(g.name)}">×</button>`;
+    s.querySelector("button").onclick = () => { fbGroups.splice(i, 1); store.set("pf.fbgroups", fbGroups); if (fbPick === g.id) { fbPick = ""; store.set("pf.fbgroup", ""); } renderAll(); };
+    wrap.appendChild(s);
+  });
+  el.appendChild(wrap);
+}
 function renderMySubs() {
   const el = $("rsMine"); el.innerHTML = "";
   if (!mySubs.length) { el.innerHTML = `<span class="empty">None yet.</span>`; return; }
@@ -1275,7 +1367,7 @@ function renderFind() {
   box.append(
     platformCard("x", S.x, { note: S.xNote, key: "x" + roles.length }),
     platformCard("reddit", S.reddit, { subs: subsForAll(roles), key: "r" + roles.join("|") }),
-    platformCard("fb", S.fb, { note: "Opens with “Recent posts” on. If Facebook shows old posts, tap “Recent posts” on the left.",key: "f" + roles.length }),
+    ((fbActive = fbGroupsFor(roles).find(g => g.id === fbPick) || null), platformCard("fb", S.fb, { note: fbActive ? "Searches inside " + fbActive.name + ". Pick “All of Facebook” to search everywhere." : "Opens with “Recent posts” on. If Facebook shows old posts, tap “Recent posts” on the left.", key: "f" + roles.length, groups: roles })),
     platformCard("bsky", S.bsky, { key: "b" + roles.length }),
     platformCard("x", CLEVER, { wide: true, key: "clever", title: "Sneaky client posts on X", hint: "clients who dodge bots and skip the word “hiring”" }),
   );
@@ -1283,7 +1375,7 @@ function renderFind() {
 }
 
 function renderSettings() {
-  renderMySubs(); renderRsGigs();
+  renderMySubs(); renderRsGigs(); renderFbMine(); renderFbGigs();
   const my = $("mygigs"); my.innerHTML = "";
   keywords.forEach((k, i) => {
     const s = document.createElement("span"); s.className = "mygig";
