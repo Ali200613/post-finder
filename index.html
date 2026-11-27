@@ -308,6 +308,7 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
     <button class="tab" role="tab" id="tab-trending" aria-controls="trending" data-view="trending">Trending now<span class="count" id="trCount" hidden></span></button>
     <button class="tab" role="tab" id="tab-market" aria-controls="market" data-view="market">Market report</button>
     <button class="tab" role="tab" id="tab-settings" aria-controls="settings" data-view="settings">My gigs &amp; settings</button>
+    <button class="tab" role="tab" id="tab-guide" aria-controls="guide" data-view="guide">Guide</button>
   </div>
 </nav>
 
@@ -464,6 +465,75 @@ footer p { max-width: 70ch; margin: 0 0 8px; }
       <button class="btn ghost" type="button" id="reset">Reset everything</button>
     </div>
   </section>
+  <!-- GUIDE -->
+  <section class="view stack" id="guide" role="tabpanel" aria-labelledby="tab-guide" hidden>
+    <div class="panel">
+      <h2 class="step-title">How to use Post Finder</h2>
+      <p class="sub" style="margin-bottom:6px">Post Finder finds <b>new posts from clients who want to pay</b> artists, animators, illustrators, designers, video editors and web developers. It doesn't post anything for you. Each button opens the newest posts on X, Reddit, Facebook or Bluesky, so you can reply to clients first.</p>
+    </div>
+
+    <div class="panel">
+      <h2 class="step-title">Find clients in 3 steps</h2>
+      <ol class="steps">
+        <li><b>Pick your gig.</b> In step 1, click a gig (artist, animator, web developer…). Type any gig in the box, like <code>pixel</code>, <code>vtuber</code> or <code>logo</code>, and pick from the suggestions. Use <b>Pick several</b> to search more gigs at once.</li>
+        <li><b>Check the date.</b> Step 2 searches <b>today's</b> posts, by your computer's date and time. The date changes by itself every day. From midnight to 5 AM (Pakistan time) it still uses yesterday's date, because X and Bluesky start a new day later; that's normal.</li>
+        <li><b>Click a search.</b> Step 3 has a card for each site. Every button opens that site's newest posts for your gig. Reply quickly: the first good replies usually get the job.</li>
+      </ol>
+      <p class="sub" style="margin:8px 0 0">Turn on <b>Real paid jobs only</b> in step 2 to hide ads, people looking for clients, unpaid and “revenue share” posts, spam and rage-bait.</p>
+    </div>
+
+    <div class="panel">
+      <h2 class="step-title">Each site</h2>
+      <ol class="steps">
+        <li><b>X / Twitter:</b> sign in to X first, or it shows nothing. Searches already hide artists advertising themselves. The “Sneaky client posts” card finds clients who don't use the word “hiring”.</li>
+        <li><b>Reddit:</b> Post Finder searches 136 hiring communities. In each one it shows <b>only client posts</b>, using that community's client flair (tag), like <b>Hiring</b> on r/HungryArtists, or the word clients write, like [Paid]. Reddit looks back a week because hiring communities only get a few client posts a day; check the time on each post.
+          <br>Type a community name in step 1 (spelling mistakes are OK, like <code>gameclassied</code>) to get clickable communities. Ones you click stay under your gigs.</li>
+        <li><b>Facebook:</b> opens with “Recent posts” on. At the top of the Facebook card, <b>Search in</b> lets you pick a group, and then every keyword searches inside that group. “Open … newest posts” shows the group's latest posts. Groups you've joined work best.</li>
+        <li><b>Bluesky:</b> no sign-in needed. Searches today's posts.</li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <h2 class="step-title">Add your own communities and groups</h2>
+      <ol class="steps">
+        <li><b>Reddit community:</b> go to <b>My gigs &amp; settings → Add a Reddit community</b>. Type a gig or a name to get suggestions, and click one to add it. For a community that isn't suggested, type its name and its client flair (the tag on a client's post there), then click Add.</li>
+        <li><b>Facebook group:</b> go to <b>My gigs &amp; settings → Your Facebook groups</b>. Paste the group's link (like <code>facebook.com/groups/123456789</code>), give it a short name, and click Add.</li>
+        <li>For each one you can choose which of your gigs it's for, or all of them.</li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <h2 class="step-title">The other tabs</h2>
+      <ol class="steps">
+        <li><b>Trending now:</b> client posts and gigs that are busy today. It updates by itself.</li>
+        <li><b>Market report:</b> which kinds of work clients are paying for this month, with tips.</li>
+        <li><b>My gigs &amp; settings:</b> add or remove gigs, Reddit communities and Facebook groups, or reset everything.</li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <h2 class="step-title">Stay safe</h2>
+      <ol class="steps">
+        <li><b>Never pay a “client”</b> to start work, for “registration”, “software” or anything else. Real clients pay you.</li>
+        <li>Check the account before you reply: a brand-new account with no posts is a warning sign.</li>
+        <li>Agree on the price, what you'll deliver and the deadline in writing. For big jobs, ask for part of the money first.</li>
+        <li>Be careful with “revenue share only” and “exposure” offers. They usually pay nothing.</li>
+        <li>Don't send personal details (ID, bank logins) to people you just met online.</li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <h2 class="step-title">Questions</h2>
+      <ol class="steps">
+        <li><b>A search shows nothing.</b> No client posted that today. Try another search or another site, or come back later. On X, make sure you're signed in.</li>
+        <li><b>Facebook shows old posts.</b> Tap “Recent posts” on the left of Facebook's results.</li>
+        <li><b>Why buttons and not a live feed?</b> X, Reddit, Facebook and Bluesky don't let outside tools read their posts for free, so each button opens the site's own search in your browser.</li>
+        <li><b>Is my data saved?</b> Your gigs, communities and groups are saved in <b>this browser only</b>. Nothing is sent anywhere. Another browser or phone starts fresh.</li>
+        <li><b>Something looks wrong?</b> Press <b>Ctrl+F5</b> to load the newest version of the page.</li>
+      </ol>
+    </div>
+  </section>
+
 </main>
 
 <footer>
@@ -1583,7 +1653,7 @@ $("reset").addEventListener("click", () => {
 });
 
 // tabs with #hash so each section can be bookmarked
-const VIEWS = ["find", "trending", "market", "settings"];
+const VIEWS = ["find", "trending", "market", "settings", "guide"];
 function show(v) {
   if (!VIEWS.includes(v)) v = "find";
   VIEWS.forEach(id => { $(id).hidden = id !== v; $("tab-" + id).setAttribute("aria-selected", String(id === v)); });
